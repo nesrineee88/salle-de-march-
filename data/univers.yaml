@@ -1,0 +1,68 @@
+# Univers du simulateur : une seule source (Yahoo Finance via yfinance), figée en instantané.
+# Voir docs/DECISIONS.md (D2, D3, D8). Modifier ce fichier puis relancer le pipeline.
+
+fenetre:
+  debut: 2018-01-01        # début de la simulation
+  fin: 2026-10-30          # fin de la simulation : dernier vendredi avant le téléchargement (jeu de données figé).
+                           # Pour aller plus loin, changer cette date puis relancer : python -m pipeline tout
+                           # (les actualités du jeu FNSPID s'arrêtent en 2023 ; après, seuls les repères et les actualités fictives existent)
+  historique_prealable_jours: 400   # historique avant le début, pour les indicateurs (SMA200, etc.)
+
+# Heures de séance approximatives en UTC (l'heure d'été est ignorée). Hors séance, le prix reste figé.
+# Les classes absentes de cette liste cotent sur toute la journée (cryptos 24h/24 ; futures quasi 24h).
+sessions_utc:
+  action: ["14:30", "21:00"]
+
+actifs:
+  # ---------------------------------------------------------------- actions (22)
+  - {symbole: AAPL,  nom: Apple,                 classe: action, secteur: Technologie,              calendrier: semaine}
+  - {symbole: MSFT,  nom: Microsoft,             classe: action, secteur: Technologie,              calendrier: semaine}
+  - {symbole: NVDA,  nom: NVIDIA,                classe: action, secteur: Technologie,              calendrier: semaine}
+  - {symbole: GOOGL, nom: Alphabet,              classe: action, secteur: Communication,            calendrier: semaine}
+  - {symbole: META,  nom: Meta Platforms,        classe: action, secteur: Communication,            calendrier: semaine}
+  - {symbole: DIS,   nom: Walt Disney,           classe: action, secteur: Communication,            calendrier: semaine}
+  - {symbole: AMZN,  nom: Amazon,                classe: action, secteur: Consommation discrétionnaire, calendrier: semaine}
+  - {symbole: TSLA,  nom: Tesla,                 classe: action, secteur: Consommation discrétionnaire, calendrier: semaine}
+  - {symbole: JPM,   nom: JPMorgan Chase,        classe: action, secteur: Finance,                  calendrier: semaine}
+  - {symbole: BAC,   nom: Bank of America,       classe: action, secteur: Finance,                  calendrier: semaine}
+  - {symbole: GS,    nom: Goldman Sachs,         classe: action, secteur: Finance,                  calendrier: semaine}
+  - {symbole: XOM,   nom: Exxon Mobil,           classe: action, secteur: Énergie,                  calendrier: semaine}
+  - {symbole: CVX,   nom: Chevron,               classe: action, secteur: Énergie,                  calendrier: semaine}
+  - {symbole: JNJ,   nom: Johnson & Johnson,     classe: action, secteur: Santé,                    calendrier: semaine}
+  - {symbole: PFE,   nom: Pfizer,                classe: action, secteur: Santé,                    calendrier: semaine}
+  - {symbole: UNH,   nom: UnitedHealth Group,    classe: action, secteur: Santé,                    calendrier: semaine}
+  - {symbole: PG,    nom: Procter & Gamble,      classe: action, secteur: Consommation de base,     calendrier: semaine}
+  - {symbole: KO,    nom: Coca-Cola,             classe: action, secteur: Consommation de base,     calendrier: semaine}
+  - {symbole: WMT,   nom: Walmart,               classe: action, secteur: Consommation de base,     calendrier: semaine}
+  - {symbole: CAT,   nom: Caterpillar,           classe: action, secteur: Industrie,                calendrier: semaine}
+  - {symbole: BA,    nom: Boeing,                classe: action, secteur: Industrie,                calendrier: semaine}
+  - {symbole: NEE,   nom: NextEra Energy,        classe: action, secteur: Services publics,         calendrier: semaine}
+
+  # ---------------------------------------------------------------- cryptomonnaies (8)
+  # SOL-USD n'existe qu'à partir de 2020 sur Yahoo : l'actif « apparaît » à sa première date de cotation.
+  - {symbole: BTC-USD,  nom: Bitcoin,   classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+  - {symbole: ETH-USD,  nom: Ethereum,  classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+  - {symbole: BNB-USD,  nom: BNB,       classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+  - {symbole: XRP-USD,  nom: XRP,       classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+  - {symbole: ADA-USD,  nom: Cardano,   classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+  - {symbole: SOL-USD,  nom: Solana,    classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+  - {symbole: DOGE-USD, nom: Dogecoin,  classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+  - {symbole: LTC-USD,  nom: Litecoin,  classe: crypto, secteur: Cryptomonnaie, calendrier: continu}
+
+  # ---------------------------------------------------------------- matières premières (11)
+  # CL=F (WTI) a clôturé NÉGATIF le 20 avril 2020 : negatif_ok: true pour ne pas « nettoyer » ce cas.
+  - {symbole: CL=F, nom: Pétrole WTI,     classe: matiere, secteur: Énergie,            calendrier: semaine, negatif_ok: true}
+  - {symbole: BZ=F, nom: Pétrole Brent,   classe: matiere, secteur: Énergie,            calendrier: semaine}
+  - {symbole: NG=F, nom: Gaz naturel,     classe: matiere, secteur: Énergie,            calendrier: semaine}
+  - {symbole: GC=F, nom: Or,              classe: matiere, secteur: Métaux précieux,    calendrier: semaine}
+  - {symbole: SI=F, nom: Argent,          classe: matiere, secteur: Métaux précieux,    calendrier: semaine}
+  - {symbole: PL=F, nom: Platine,         classe: matiere, secteur: Métaux précieux,    calendrier: semaine}
+  - {symbole: HG=F, nom: Cuivre,          classe: matiere, secteur: Métaux industriels, calendrier: semaine}
+  - {symbole: ZW=F, nom: Blé,             classe: matiere, secteur: Agricole,           calendrier: semaine}
+  - {symbole: ZC=F, nom: Maïs,            classe: matiere, secteur: Agricole,           calendrier: semaine}
+  - {symbole: ZS=F, nom: Soja,            classe: matiere, secteur: Agricole,           calendrier: semaine}
+  - {symbole: KC=F, nom: Café,            classe: matiere, secteur: Agricole,           calendrier: semaine}
+
+  # ---------------------------------------------------------------- indices (références, non négociables)
+  - {symbole: "^GSPC", nom: S&P 500, classe: indice, secteur: Indice, calendrier: semaine, tradable: false}
+  - {symbole: "^VIX",  nom: VIX (volatilité implicite du S&P 500), classe: indice, secteur: Indice, calendrier: semaine, tradable: false}

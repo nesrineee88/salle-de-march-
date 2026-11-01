@@ -1,0 +1,313 @@
+{
+  "fichiers": {
+    "AAPL.csv": {
+      "symbole": "AAPL",
+      "sha256": "a55f5ea3274499fa0cab91d6a052358d95dafc4ea43eda492fe0f7787803458a",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "MSFT.csv": {
+      "symbole": "MSFT",
+      "sha256": "9a5d1a3dacf55dea07f2ff578991ea9b9b9e1bca03b09ffefbbda674bd93f5c7",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "NVDA.csv": {
+      "symbole": "NVDA",
+      "sha256": "3a75ab3e3a5da350da48871bd4f9692a60244f7963e3ece04f48cdb5866941f6",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "GOOGL.csv": {
+      "symbole": "GOOGL",
+      "sha256": "646df293535e3a639a3d5949472bbe0ee74087bb15c074bd831dc83d0f58fccf",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "META.csv": {
+      "symbole": "META",
+      "sha256": "76539c98a3beee6b0c3c9536769a9dd5d8051f5340cfb63746b467251ca92d4a",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "DIS.csv": {
+      "symbole": "DIS",
+      "sha256": "9a73207259f0c0ea5fb51339a6412bbfda2f7c9c7f66c8187946115e758d8f20",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "AMZN.csv": {
+      "symbole": "AMZN",
+      "sha256": "76c3cfdc25acb63966806a8654275f89e5a5aec1dbd0761a8497b486c9e7f498",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "TSLA.csv": {
+      "symbole": "TSLA",
+      "sha256": "e9d9c8491a2d68daedf382be2d3d5408135532e3c91c4fbd5e660043209fadce",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "JPM.csv": {
+      "symbole": "JPM",
+      "sha256": "5c71dd961858d13db5333fd611e2f0099fa46bff65ebce4591dadd67c8d4a81e",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "BAC.csv": {
+      "symbole": "BAC",
+      "sha256": "4e575a0ed7a6954c4d9a1ec3d6b4f7ac48f20c823ea8c747efeb5ab346131e77",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "GS.csv": {
+      "symbole": "GS",
+      "sha256": "8f094173959a5870b0ded32ddaf6f85b5cffd392ab5ecd89b32416e3bcb51ccd",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "XOM.csv": {
+      "symbole": "XOM",
+      "sha256": "566ca11edbebdb87784d2e8b78bf826f5d8ed5e9aeb85b19c986c7a88b1f0f6a",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "CVX.csv": {
+      "symbole": "CVX",
+      "sha256": "29d49886b0bb3839cd929394c061a6a1efb10922c52e958a9e669fed68f3fca2",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "JNJ.csv": {
+      "symbole": "JNJ",
+      "sha256": "f501b49b6ccdd26c75f1f2183870018b9042417eee344d3edf0ba5724cdaaa8f",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "PFE.csv": {
+      "symbole": "PFE",
+      "sha256": "bad1c0f19002306df73e1cff3d65578d07c4461d7458849921a14120c7dd3c65",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "UNH.csv": {
+      "symbole": "UNH",
+      "sha256": "f40e40566427f98ddd0e1b4ff361227c19695e55ca40a2c206b179ad6eef443b",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "PG.csv": {
+      "symbole": "PG",
+      "sha256": "fba7895dc4e95e322ee06ef907617332c02647ee587486f1913f4152867dec8e",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "KO.csv": {
+      "symbole": "KO",
+      "sha256": "b5d6580d1e7ab9c788c13e0952a1716486d8b2d96e7f3ab1da60c40e697044e7",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "WMT.csv": {
+      "symbole": "WMT",
+      "sha256": "b6dbc319fe05756b3c6ac60a9bb4db3f4d3667503196b7e0eaa45f33cb16feae",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "CAT.csv": {
+      "symbole": "CAT",
+      "sha256": "ee944be58c0e82778639881ee35129c07f055cb3ee48a9e01f57ea5606f21b90",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "BA.csv": {
+      "symbole": "BA",
+      "sha256": "9260c57317372ca5befae362322a96417c44277138b7d1f294ee6bee247c05fb",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "NEE.csv": {
+      "symbole": "NEE",
+      "sha256": "84fc5298f50a8f82a3021696146a5867e11ce44344f99c3c5a0d9ce553882299",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "BTC-USD.csv": {
+      "symbole": "BTC-USD",
+      "sha256": "37ef05a4025fabc1de0b9fbc02b1fc682399b1ff014e0d2908f42fc9cd892f37",
+      "lignes": 2591,
+      "premiere_date": "2016-11-27",
+      "derniere_date": "2023-12-31"
+    },
+    "ETH-USD.csv": {
+      "symbole": "ETH-USD",
+      "sha256": "fd4fc11789f4cb6df263c43b078705e4f333de045a5a93a2f64bb930f8eaa32f",
+      "lignes": 2244,
+      "premiere_date": "2017-11-09",
+      "derniere_date": "2023-12-31"
+    },
+    "BNB-USD.csv": {
+      "symbole": "BNB-USD",
+      "sha256": "93792e3aa75c310d0dcb227fffee76f6014195239a62ec1cc2a6dd5af9f486cb",
+      "lignes": 2244,
+      "premiere_date": "2017-11-09",
+      "derniere_date": "2023-12-31"
+    },
+    "XRP-USD.csv": {
+      "symbole": "XRP-USD",
+      "sha256": "9dcf7689849a0d76053682ea002d5fd6df860cc771d692d3d4af3acef0955aba",
+      "lignes": 2244,
+      "premiere_date": "2017-11-09",
+      "derniere_date": "2023-12-31"
+    },
+    "ADA-USD.csv": {
+      "symbole": "ADA-USD",
+      "sha256": "e8f927ea9ca5cee0a92900209a8f9f2d9d26f9e0735bdc9c3b16b0bfab7edee5",
+      "lignes": 2244,
+      "premiere_date": "2017-11-09",
+      "derniere_date": "2023-12-31"
+    },
+    "SOL-USD.csv": {
+      "symbole": "SOL-USD",
+      "sha256": "568f64312a4343994758fbdce32c3a3fb7dc9a7dc386ae9b8578bad43725629e",
+      "lignes": 1361,
+      "premiere_date": "2020-04-10",
+      "derniere_date": "2023-12-31"
+    },
+    "DOGE-USD.csv": {
+      "symbole": "DOGE-USD",
+      "sha256": "ff83c483208e11d0401311f1f7240e0b5213b286d2e074183ce3a06fad4d2253",
+      "lignes": 2244,
+      "premiere_date": "2017-11-09",
+      "derniere_date": "2023-12-31"
+    },
+    "LTC-USD.csv": {
+      "symbole": "LTC-USD",
+      "sha256": "6826d91fcbdc0269caae8193f2d51625bc74f38b686165bf568fd7525443535d",
+      "lignes": 2591,
+      "premiere_date": "2016-11-27",
+      "derniere_date": "2023-12-31"
+    },
+    "CL_F.csv": {
+      "symbole": "CL=F",
+      "sha256": "b0d555898703f12feb743c7c35aaf0c064f9de4e30fab2ede7f86032807f3946",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "BZ_F.csv": {
+      "symbole": "BZ=F",
+      "sha256": "c6fab8f94c1f4caa5f0b81d5f9881e207e9565b54265f09316ee0a50f7d3b717",
+      "lignes": 1785,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "NG_F.csv": {
+      "symbole": "NG=F",
+      "sha256": "b762853981c250e71f376b8962ac5e6210284669affd8ca1bf8f926d3fc36376",
+      "lignes": 1785,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "GC_F.csv": {
+      "symbole": "GC=F",
+      "sha256": "b2c00cfea1074194e3f8ca0c92770523716251faa135e7b4e5073a424b701e8c",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "SI_F.csv": {
+      "symbole": "SI=F",
+      "sha256": "77794b2203619ac4faeff7986567ad83af0f11ad935edff19da3825e4048ce10",
+      "lignes": 1783,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "PL_F.csv": {
+      "symbole": "PL=F",
+      "sha256": "a01bfbf5d3db35ef98e3d681883adc874b5892d59965a32925b07bb11d0f83bc",
+      "lignes": 1783,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "HG_F.csv": {
+      "symbole": "HG=F",
+      "sha256": "f5398fa59443d49087935d75b3b7012638ce81590072fc473fc9621c52e54821",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "ZW_F.csv": {
+      "symbole": "ZW=F",
+      "sha256": "25c58807d515437b4c257a945ceb04db07eaec6fe7c30884464ee80c33471725",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "ZC_F.csv": {
+      "symbole": "ZC=F",
+      "sha256": "4515de5d3b6c1ed986de6cdfabe9b2f8cf2831ea92baa08fb99d9f9d704df97f",
+      "lignes": 1782,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "ZS_F.csv": {
+      "symbole": "ZS=F",
+      "sha256": "eb188f525083b0a03e2edf26ccbb304cd335ae55ddf65e1c1b4d4b18454d2ead",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "KC_F.csv": {
+      "symbole": "KC=F",
+      "sha256": "08c6c4cbc8b572b93168f0abbbe38949a8042fda00eeb9d703b699868269997d",
+      "lignes": 1785,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "idx_GSPC.csv": {
+      "symbole": "^GSPC",
+      "sha256": "6c8322c4b116e023c01e4b8a6cbf0887bf2713f8210fa90cdfa67d9ed66f291a",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    },
+    "idx_VIX.csv": {
+      "symbole": "^VIX",
+      "sha256": "1d97c4b301d639e05b5570eaa5a603ef38573bc1a187d856f4cd614bc4f88bc8",
+      "lignes": 1784,
+      "premiere_date": "2016-11-28",
+      "derniere_date": "2023-12-29"
+    }
+  },
+  "source": "yfinance",
+  "auto_adjust": true,
+  "fenetre_brute": [
+    "2016-11-27",
+    "2026-10-30"
+  ],
+  "mis_a_jour_le": "2026-10-31T20:52:24+00:00",
+  "erreurs": {}
+}

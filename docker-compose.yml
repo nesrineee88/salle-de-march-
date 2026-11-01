@@ -1,0 +1,24 @@
+# Base PostgreSQL du simulateur (développement et démonstration).
+#   1. cp .env.example .env     (puis choisissez un vrai mot de passe)
+#   2. docker compose up -d
+#   3. cd backend && alembic upgrade head
+# L'API lit SDM_DATABASE_URL (voir .env.example).
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-simulateur}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définissez POSTGRES_PASSWORD dans le fichier .env}
+      POSTGRES_DB: ${POSTGRES_DB:-simulateur}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"      # accessible depuis cette machine uniquement
+    volumes:
+      - simulateur_pgdata:/var/lib/postgresql/data    # les données survivent à « docker compose down »
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-simulateur} -d ${POSTGRES_DB:-simulateur}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  simulateur_pgdata:

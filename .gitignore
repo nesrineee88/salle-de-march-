@@ -1,0 +1,15 @@
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+node_modules/
+.next/
+.env
+data/raw/*.csv
+data/clean/*.csv
+*.pkl
+.vscode/
+
+*.db
+*.sqlite3
+.env.local
