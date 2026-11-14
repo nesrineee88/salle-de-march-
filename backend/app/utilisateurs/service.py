@@ -256,3 +256,30 @@ def changer_mot_de_passe(session: Session, utilisateur: Utilisateur, ancien: str
         *( [JetonRafraichissement.famille != garder] if garder else [] )).values(revoque_le=maintenant()))
     session.commit()
     auditer(session, "mot_de_passe_change", utilisateur.id, None, ip)
+
+
+# ------------------------------------------------------------------ connexion sociale (Google / GitHub)
+def connecter_social(session: Session, fournisseur: str, email: str, nom: str, ip: str | None = None,
+                     agent: str | None = None) -> tuple[Utilisateur, str, str]:
+    """Retrouve le compte par e-mail (vérifié par le fournisseur) ou le crée avec un mot de passe aléatoire inutilisable."""
+    email = email.strip().lower()
+    u = session.scalar(select(Utilisateur).where(Utilisateur.email == email))
+    if u is None:
+        base = " ".join(nom.split())[:50] or email.split("@")[0]
+        candidat, n = base, 1
+        while session.scalar(select(Utilisateur).where(Utilisateur.nom_normalise == candidat.lower())):
+            n += 1
+            candidat = f"{base} {n}"
+        u = Utilisateur(email=email, nom=candidat, nom_normalise=candidat.lower(), role="apprenant",
+                        mot_de_passe_hash=securite.hacher(uuid.uuid4().hex + uuid.uuid4().hex))
+        session.add(u)
+        session.commit()
+        auditer(session, "inscription", u.id, {"role": "apprenant", "via": fournisseur}, ip)
+    if not u.actif:
+        auditer(session, "connexion_refusee", u.id, {"motif": "desactive", "via": fournisseur}, ip)
+        raise ErreurMetier("desactive", "Ce compte est désactivé. Contactez un administrateur.", 403)
+    u.echecs_connexion, u.verrouille_jusqua, u.derniere_connexion = 0, None, maintenant()
+    session.commit()
+    acces, rafraichissement = _emettre_jetons(session, u, uuid.uuid4().hex, ip, agent)
+    auditer(session, "connexion", u.id, {"via": fournisseur}, ip)
+    return u, acces, rafraichissement

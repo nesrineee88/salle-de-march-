@@ -31,6 +31,7 @@ from .routes_regles import routeur as routeur_regles
 from .scenarios.routes import routeur as routeur_scenarios
 from .trading.salle import ordre_en_dict
 from .utilisateurs.modeles import Utilisateur
+from .marche.profil import description_wikipedia
 from .utilisateurs.routes import exiger, routeur as routeur_utilisateurs
 from .utilisateurs.service import ErreurMetier
 
@@ -74,6 +75,20 @@ def actifs(ctx: Contexte = Depends(obtenir_contexte), _u: Utilisateur = Depends(
             debut, fin = ctx.magasin.periode(a.symbole)
             entree["premiere_cotation"], entree["derniere_cotation"] = debut.isoformat(), fin.isoformat()
         sortie.append(entree)
+    return sortie
+
+
+@app.get("/api/v1/actifs/{symbole:path}/profil")
+def profil_actif(symbole: str, ctx: Contexte = Depends(obtenir_contexte), _u: Utilisateur = Depends(exiger("marche.lire"))):
+    """Fiche d'un actif : catalogue + description sourcée (Wikipédia), vide si indisponible."""
+    a = ctx.univers.actifs.get(symbole)
+    if a is None:
+        raise HTTPException(404, f"Actif inconnu : {symbole}")
+    sortie = {"symbole": a.symbole, "nom": a.nom, "classe": a.classe, "secteur": a.secteur, "devise": a.devise,
+              "calendrier": a.calendrier, "tradable": a.tradable, "description": description_wikipedia(a.symbole, a.nom)}
+    if ctx.magasin.a_des_donnees(a.symbole):
+        debut, fin = ctx.magasin.periode(a.symbole)
+        sortie["premiere_cotation"], sortie["derniere_cotation"] = debut.isoformat(), fin.isoformat()
     return sortie
 
 

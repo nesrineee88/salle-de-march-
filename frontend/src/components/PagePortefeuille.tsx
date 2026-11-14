@@ -10,6 +10,7 @@ import Barres from "./Barres";
 import { useMarche } from "./Contexte";
 import Correlations from "./Correlations";
 import Courbe from "./Courbe";
+import HistoriqueTransactions from "./HistoriqueTransactions";
 import Indicateur from "./Indicateur";
 
 const STATUTS = {
@@ -112,7 +113,7 @@ function Journal({ trades }: { trades: Trade[] | null }) {
         <button role="tab" aria-selected={onglet === "positions"} className="onglet" onClick={() => setOnglet("positions")}>Positions ({pf?.positions.length ?? 0})</button>
         <button role="tab" aria-selected={onglet === "trades"} className="onglet" onClick={() => setOnglet("trades")}>Trades clôturés ({trades?.length ?? 0})</button>
         <button role="tab" aria-selected={onglet === "ordres"} className="onglet" onClick={() => setOnglet("ordres")}>Ordres{ouverts.length > 0 ? ` (${ouverts.length} en attente)` : ""}</button>
-        <button role="tab" aria-selected={onglet === "executions"} className="onglet" onClick={() => setOnglet("executions")}>Journal des exécutions</button>
+        <button role="tab" aria-selected={onglet === "executions"} className="onglet" onClick={() => setOnglet("executions")}>Historique des transactions ({execs.length})</button>
         <button role="tab" aria-selected={onglet === "regles"} className="onglet" onClick={() => setOnglet("regles")}>Règles automatiques{actives > 0 ? ` (${actives} active${actives > 1 ? "s" : ""})` : ""}</button>
       </div>
       <div className="tableau-defile" role="tabpanel">
@@ -165,16 +166,7 @@ function Journal({ trades }: { trades: Trade[] | null }) {
           </table>
         ) : <p className="vide">Aucun ordre pour le moment.</p>)}
 
-        {onglet === "executions" && (execs.length > 0 ? (
-          <table className="tableau">
-            <thead><tr><th>Date simulée</th><th>Actif</th><th>Sens</th><th>Quantité</th><th>Prix</th><th>Frais</th><th>Origine</th></tr></thead>
-            <tbody>
-              {execs.map((e, i) => (
-                <tr key={`${e.ordre_id}-${i}`}><td>{dateHeure(e.instant)}</td><td>{e.symbole}</td><td>{e.sens === "achat" ? "Achat" : "Vente"}</td><td>{quantite(e.quantite)}</td><td>{prix(e.prix)}</td><td>{montant(e.frais)}</td><td>{origines.get(e.ordre_id) ? "Règle automatique" : "Manuel"}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="vide">Aucune exécution pour le moment.</p>)}
+        {onglet === "executions" && <HistoriqueTransactions />}
 
         {onglet === "regles" && (regles.length > 0 ? (
           <table className="tableau tableau-regles">

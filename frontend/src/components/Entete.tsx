@@ -1,47 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { NAVIGATION, type GroupeNav } from "@/lib/navigation";
-import BoutonTheme from "./BoutonTheme";
+import { Menu, Search, Star } from "lucide-react";
+import BoutonApparence from "./BoutonApparence";
+import { useSuivis } from "@/lib/suivis";
 import { useMarche } from "./Contexte";
 
-function Groupe({ groupe, actif }: { groupe: GroupeNav; actif: boolean }) {
-  const [ouvert, setOuvert] = useState(false);
-  const zone = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!ouvert) return;
-    const fermer = (e: MouseEvent) => { if (zone.current && !zone.current.contains(e.target as Node)) setOuvert(false); };
-    const echap = (e: KeyboardEvent) => e.key === "Escape" && setOuvert(false);
-    document.addEventListener("mousedown", fermer);
-    document.addEventListener("keydown", echap);
-    return () => { document.removeEventListener("mousedown", fermer); document.removeEventListener("keydown", echap); };
-  }, [ouvert]);
-  return (
-    <div className="nav-groupe" ref={zone}>
-      <button className="nav-lien nav-bouton" aria-haspopup="menu" aria-expanded={ouvert} aria-current={actif ? "page" : undefined} onClick={() => setOuvert(!ouvert)}>
-        {groupe.libelle} <span aria-hidden="true" className="nav-fleche">▾</span>
-      </button>
-      {ouvert && (
-        <ul className="menu nav-menu" role="menu">
-          {groupe.liens.map((l) => (
-            <li key={l.href} role="none">
-              <Link role="menuitem" href={l.href} onClick={() => setOuvert(false)}>
-                {l.libelle}
-                {l.description && <small className="discret"> {l.description}</small>}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+interface Props {
+  ouvrirRecherche: () => void;
+  basculerMenuMobile: () => void;
+  suivisOuverts: boolean;
+  basculerSuivis: () => void;
 }
 
-export default function Entete() {
-  const { utilisateur, mode, setMode, deconnecter } = useMarche();
-  const chemin = usePathname();
+/** Barre du haut : marque, recherche globale, suivis, apparence, mode et compte. La navigation est dans le menu latéral. */
+export default function Entete({ ouvrirRecherche, basculerMenuMobile, suivisOuverts, basculerSuivis }: Props) {
+  const { utilisateur, deconnecter } = useMarche();
+  const { suivis } = useSuivis(utilisateur.email);
   const [menu, setMenu] = useState(false);
   const zone = useRef<HTMLDivElement>(null);
 
@@ -54,29 +30,24 @@ export default function Entete() {
     return () => { document.removeEventListener("mousedown", fermer); document.removeEventListener("keydown", echap); };
   }, [menu]);
 
-  const entrees = utilisateur.role === "admin" ? [...NAVIGATION, { href: "/admin", libelle: "Administration" }] : NAVIGATION;
-  const actif = (href: string) => (href === "/" ? chemin === "/" : chemin.startsWith(href));
-
   return (
     <header className="entete">
+      <button type="button" className="btn-icone menu-mobile" onClick={basculerMenuMobile} aria-label="Ouvrir le menu"><Menu size={20} aria-hidden="true" /></button>
       <Link href="/" className="marque">Salle de marché</Link>
-      <nav className="navigation" aria-label="Pages">
-        {entrees.map((e) =>
-          "liens" in e && e.liens ? (
-            <Groupe key={e.libelle} groupe={e} actif={e.liens.some((l) => actif(l.href))} />
-          ) : (
-            <Link key={e.href} href={e.href!} className="nav-lien" aria-current={actif(e.href!) ? "page" : undefined}>{e.libelle}</Link>
-          ),
-        )}
-      </nav>
+
+      <button type="button" className="recherche-declencheur" onClick={ouvrirRecherche} aria-label="Chercher un actif ou une page (Ctrl+K)">
+        <Search size={16} aria-hidden="true" />
+        <span className="recherche-declencheur-texte">Chercher un actif ou une page</span>
+        <kbd>Ctrl K</kbd>
+      </button>
+
       <div className="entete-droite">
-        <BoutonTheme />
-        <div className="modes" role="group" aria-label="Mode d'affichage">
-          <button aria-pressed={mode === "apprenant"} onClick={() => setMode("apprenant")}>Apprenant</button>
-          <button aria-pressed={mode === "trader"} onClick={() => setMode("trader")}>Trader</button>
-        </div>
+        <button type="button" className="btn-rond" data-info="Mes suivis" aria-label={`Mes suivis${suivis.length > 0 ? ` (${suivis.length})` : ""}`} aria-pressed={suivisOuverts} onClick={basculerSuivis}>
+          <Star size={18} aria-hidden="true" />{suivis.length > 0 && <span className="badge-rond">{suivis.length}</span>}
+        </button>
+        <BoutonApparence />
         <div className="menu-utilisateur" ref={zone}>
-          <button className="btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}>{utilisateur.nom}</button>
+          <button type="button" className="btn-rond btn-rond-avatar" data-info={utilisateur.nom} aria-label={`Compte de ${utilisateur.nom}`} aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu(!menu)}><span className="avatar-compte" aria-hidden="true">{utilisateur.nom.charAt(0).toUpperCase()}</span></button>
           {menu && (
             <ul className="menu" role="menu">
               <li role="none"><p className="menu-info">{utilisateur.email}<br />Rôle : {utilisateur.role}</p></li>

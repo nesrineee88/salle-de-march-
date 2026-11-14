@@ -4,13 +4,14 @@ from __future__ import annotations
 from functools import lru_cache
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import config
-from . import service
+from . import oauth, service
 from .db import obtenir_session
 from .limiteur import LimiteurFenetre
 from .modeles import JournalAudit, Utilisateur
@@ -112,6 +113,43 @@ def rafraichir(corps: CorpsJeton, requete: Request, session: Session = Depends(o
 @routeur.post("/auth/deconnexion", status_code=204)
 def deconnexion(corps: CorpsJeton, requete: Request, session: Session = Depends(obtenir_session)):
     service.deconnecter(session, corps.refresh_token, ip_de(requete))
+
+
+# ------------------------------------------------------------------ connexion avec Google / GitHub
+@routeur.get("/auth/oauth/fournisseurs")
+def fournisseurs_oauth():
+    return {"fournisseurs": oauth.disponibles()}
+
+
+@routeur.get("/auth/oauth/{fournisseur}/debut", dependencies=[Depends(limiter)])
+def oauth_debut(fournisseur: str):
+    if fournisseur not in oauth.FOURNISSEURS:
+        raise HTTPException(404, "Fournisseur inconnu.")
+    try:
+        return RedirectResponse(oauth.url_autorisation(fournisseur), status_code=302)
+    except oauth.ErreurOAuth as e:
+        return RedirectResponse(f"{config.URL_FRONT}/#erreur={e}", status_code=302)
+
+
+@routeur.get("/auth/oauth/{fournisseur}/retour", dependencies=[Depends(limiter)])
+def oauth_retour(fournisseur: str, requete: Request, code: str = "", state: str = "", error: str = "",
+                 session: Session = Depends(obtenir_session)):
+    from urllib.parse import quote
+    def echec(message: str):
+        return RedirectResponse(f"{config.URL_FRONT}/#erreur={quote(message)}", status_code=302)
+    if fournisseur not in oauth.FOURNISSEURS:
+        raise HTTPException(404, "Fournisseur inconnu.")
+    if error or not code:
+        return echec("Connexion annulée.")
+    if not oauth.verifier_state(state, fournisseur):
+        return echec("Demande de connexion expirée ou invalide. Recommencez.")
+    try:
+        email, nom = oauth.identite(fournisseur, code)
+        _u, _acces, rafraichissement = service.connecter_social(
+            session, fournisseur, email, nom, ip_de(requete), requete.headers.get("user-agent"))
+    except (oauth.ErreurOAuth, service.ErreurMetier) as e:
+        return echec(str(e))
+    return RedirectResponse(f"{config.URL_FRONT}/#session={rafraichissement}", status_code=302)
 
 
 # ------------------------------------------------------------------ profil

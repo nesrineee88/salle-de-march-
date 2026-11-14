@@ -13,3 +13,4 @@ data/clean/*.csv
 *.db
 *.sqlite3
 .env.local
+data/utilisateurs.db.sauvegarde

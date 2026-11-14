@@ -11,6 +11,9 @@ import Carnet from "./Carnet";
 import { useMarche } from "./Contexte";
 import Graphique from "./Graphique";
 import Marches from "./Marches";
+import { Star } from "lucide-react";
+import { EVENEMENT_ACTIF, symboleDansAdresse } from "@/lib/actif";
+import { useSuivis } from "@/lib/suivis";
 import Protection from "./Protection";
 import Ticket from "./Ticket";
 
@@ -19,8 +22,9 @@ const TITRES: Record<string, string> = { action: "Actions", crypto: "Cryptomonna
 const enc = encodeURIComponent;
 
 export default function PageMarche({ classe }: { classe: Classe }) {
-  const { inst, actifs, pf, ordres, execs, mode, envoyer, annuler } = useMarche();
-  const [selection, setSelection] = useState<string>(DEFAUT[classe]);
+  const { inst, actifs, pf, ordres, execs, mode, envoyer, annuler, utilisateur } = useMarche();
+  const { estSuivi, basculer: basculerSuivi } = useSuivis(utilisateur.email);
+  const [selection, setSelection] = useState<string>(() => symboleDansAdresse() ?? DEFAUT[classe]);
   const [barres, setBarres] = useState<Barre[]>([]);
   const [carnet, setCarnet] = useState<CarnetT | null>(null);
   const [indic, setIndic] = useState<Indicateurs | null>(null);
@@ -59,6 +63,18 @@ export default function PageMarche({ classe }: { classe: Classe }) {
 
   const choisir = (s: string) => { setBarres([]); setCarnet(null); setIndic(null); setSelection(s); };
 
+  // Le bandeau de cours, la recherche et les suivis demandent un actif par un événement quand on est déjà sur la bonne page.
+  useEffect(() => {
+    const surActif = (e: Event) => {
+      const symbole = (e as CustomEvent<string>).detail;
+      const a = actifs.find((x) => x.symbole === symbole);
+      if (a && classes.includes(a.classe)) choisir(symbole);
+    };
+    window.addEventListener(EVENEMENT_ACTIF, surActif);
+    return () => window.removeEventListener(EVENEMENT_ACTIF, surActif);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actifs, classes]);
+
   const actif = actifs.find((a) => a.symbole === selection);
   const cotation = inst?.cotations.find((c) => c.symbole === selection);
   const base = cotation?.reference ?? cotation?.derniere_cloture ?? null;
@@ -93,6 +109,10 @@ export default function PageMarche({ classe }: { classe: Classe }) {
                     </span>
                   )}
                 </p>
+                <button type="button" className="btn btn-icone-texte graphique-suivre" aria-pressed={estSuivi(actif.symbole)} onClick={() => basculerSuivi(actif.symbole)}
+                  title={estSuivi(actif.symbole) ? "Retirer de Mes suivis" : "Ajouter à Mes suivis"}>
+                  <Star size={16} aria-hidden="true" fill={estSuivi(actif.symbole) ? "currentColor" : "none"} /> {estSuivi(actif.symbole) ? "Suivi" : "Suivre"}
+                </button>
               </>
             ) : <h1>Choisissez un actif</h1>}
           </div>

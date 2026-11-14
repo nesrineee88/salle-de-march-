@@ -5,7 +5,7 @@ import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
 import "./globals.css";
 import Coquille from "@/components/Coquille";
-import { SCRIPT_THEME } from "@/lib/theme";
+import { SCRIPT_APPARENCE, SCRIPT_THEME } from "@/lib/scripts-initiaux";
 
 export const metadata: Metadata = {
   title: "Salle de marché",
@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: SCRIPT_THEME }} />
+        <script dangerouslySetInnerHTML={{ __html: SCRIPT_THEME + SCRIPT_APPARENCE }} />
       </head>
       <body>
         <Coquille>{children}</Coquille>
