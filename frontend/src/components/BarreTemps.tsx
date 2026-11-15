@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Gauge, Pause, Play } from "lucide-react";
 import { ErreurApi, api } from "@/lib/api";
 import { dateLongue, heure, instantDate } from "@/lib/format";
 import type { EtatDirect, Instantane } from "@/lib/types";
@@ -29,7 +30,7 @@ function useInstantLisse(inst: Instantane | null): string | null {
 }
 
 export default function BarreTemps() {
-  const { inst, aller, basculerPause, changerFacteur, activerDirect, quitterDirect } = useMarche();
+  const { mode, setMode, inst, aller, basculerPause, changerFacteur, activerDirect, quitterDirect } = useMarche();
   const lisse = useInstantLisse(inst);
   const [fiche, setFiche] = useState<EtatDirect | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -61,27 +62,36 @@ export default function BarreTemps() {
         ) : <p className="horloge-date">Connexion au marché…</p>}
       </div>
 
-      {enDirect ? (
-        <div className="commandes-temps">
-          <p className="direct-badge" role="status"><span aria-hidden="true">●</span> DIRECT (bêta) · heure réelle</p>
-          <button className="btn" onClick={() => void quitterDirect()}>Quitter le Direct</button>
-        </div>
-      ) : (
       <div className="commandes-temps">
-        <button className="btn btn-temps" onClick={basculerPause} disabled={!h || inst?.termine}
-          aria-label={h?.en_pause ? "Lancer la simulation" : "Mettre la simulation en pause"}>
-          {inst?.termine ? "Terminée" : h?.en_pause ? "▶ Lancer" : "❚❚ Pause"}
-        </button>
-        <label className="vitesse">
-          <span>Vitesse</span>
-          <select value={nomFacteur ?? ""} onChange={(e) => h && void changerFacteur(h.facteurs_predefinis[e.target.value])} disabled={!h}>
-            {!nomFacteur && h && <option value="">×{h.facteur}</option>}
-            {h && Object.keys(h.facteurs_predefinis).map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
-        <button className="btn" onClick={() => void ouvrirDirect()} aria-haspopup="dialog" disabled={!h}>◉ Direct (bêta)</button>
+        {!enDirect && (
+          <>
+            <button type="button" className="btn-lecture" onClick={basculerPause} disabled={!h || inst?.termine}
+              aria-label={inst?.termine ? "Simulation terminée" : h?.en_pause ? "Lancer la simulation" : "Mettre la simulation en pause"}
+              title={inst?.termine ? "Simulation terminée" : h?.en_pause ? "Lancer" : "Pause"}>
+              {h?.en_pause || inst?.termine ? <Play size={18} aria-hidden="true" fill="currentColor" /> : <Pause size={18} aria-hidden="true" fill="currentColor" />}
+            </button>
+            <label className="vitesse" title="Vitesse de la simulation">
+              <Gauge size={16} aria-hidden="true" />
+              <span className="sr-only">Vitesse</span>
+              <select value={nomFacteur ?? ""} onChange={(e) => h && void changerFacteur(h.facteurs_predefinis[e.target.value])} disabled={!h}>
+                {!nomFacteur && h && <option value="">×{h.facteur}</option>}
+                {h && Object.keys(h.facteurs_predefinis).map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+          </>
+        )}
+        <div className="segment" role="group" aria-label="Mode de jeu">
+          <button type="button" aria-pressed={mode === "apprenant"} onClick={() => setMode("apprenant")} title="Explications et repères pédagogiques">Apprenant</button>
+          <button type="button" aria-pressed={mode === "trader"} onClick={() => setMode("trader")} title="Vue dense, sans aides">Trader</button>
+        </div>
+        <div className="segment" role="group" aria-label="Source des prix">
+          <button type="button" aria-pressed={!enDirect} onClick={() => enDirect && void quitterDirect()} disabled={!h}>Rejeu historique</button>
+          <button type="button" aria-pressed={enDirect} onClick={() => !enDirect && void ouvrirDirect()} aria-haspopup={enDirect ? undefined : "dialog"} disabled={!h}>
+            {enDirect && <span className="point-direct" aria-hidden="true" />}Direct <small>bêta</small>
+          </button>
+        </div>
+        {enDirect && <p className="direct-badge" role="status">Heure réelle · prix Yahoo Finance</p>}
       </div>
-      )}
 
       {fiche && (
         <div className="direct-fiche" role="dialog" aria-labelledby="titre-direct">

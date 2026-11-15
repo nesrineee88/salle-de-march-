@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Auth from "./Auth";
+import BandeauCours from "./BandeauCours";
+import CurseurAnime from "./CurseurAnime";
+import FondAnime from "./FondAnime";
 import BarreTemps from "./BarreTemps";
 import { FournisseurMarche, useMarche } from "./Contexte";
 import Entete from "./Entete";
+import MenuLateral from "./MenuLateral";
+import PanneauSuivis from "./PanneauSuivis";
+import Recherche from "./Recherche";
+import { useApparence } from "@/lib/apparence";
 import { deconnexion, enregistrerSurDeconnexion, restaurerSession } from "@/lib/api";
 import { dateLongue } from "@/lib/format";
 import type { Utilisateur } from "@/lib/types";
@@ -39,22 +46,47 @@ function Bandeaux() {
 
 function Interieur({ children }: { children: React.ReactNode }) {
   const { inst } = useMarche();
+  const { bandeau } = useApparence();
+  const [recherche, setRecherche] = useState(false);
+  const [menuMobile, setMenuMobile] = useState(false);
+  const [suivis, setSuivis] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1500);
   const sansDonnees = inst !== null && inst.cotations.length === 0;
+
+  // Ctrl+K (ou Cmd+K) et « / » ouvrent la recherche, sauf pendant la saisie dans un champ.
+  useEffect(() => {
+    const touche = (e: KeyboardEvent) => {
+      const cible = e.target as HTMLElement | null;
+      const saisie = cible && (cible.tagName === "INPUT" || cible.tagName === "TEXTAREA" || cible.tagName === "SELECT" || cible.isContentEditable);
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setRecherche(true); }
+      else if (e.key === "/" && !saisie) { e.preventDefault(); setRecherche(true); }
+    };
+    document.addEventListener("keydown", touche);
+    return () => document.removeEventListener("keydown", touche);
+  }, []);
+
   return (
     <div className="coquille">
-      <Entete />
-      <BarreTemps />
-      <Bandeaux />
-      <div className="contenu">
-        {sansDonnees ? (
-          <main className="espace-vide">
-            <h1>Aucune donnée de marché</h1>
-            <p>Le serveur n&apos;a pas encore de prix à rejouer. Dans le dossier <code>backend</code>, lancez :</p>
-            <pre>python -m pipeline tout</pre>
-            <p>Cette commande télécharge les prix, les nettoie et prépare le simulateur. Rechargez ensuite cette page.</p>
-          </main>
-        ) : children}
+      <Entete ouvrirRecherche={() => setRecherche(true)} basculerMenuMobile={() => setMenuMobile((v) => !v)} suivisOuverts={suivis} basculerSuivis={() => setSuivis((v) => !v)} />
+      {bandeau && !sansDonnees && <BandeauCours />}
+      <div className="corps">
+        <MenuLateral ouvertMobile={menuMobile} fermerMobile={() => setMenuMobile(false)} />
+        <div className="colonne">
+          <BarreTemps />
+          <Bandeaux />
+          <div className="contenu">
+            {sansDonnees ? (
+              <main className="espace-vide">
+                <h1>Aucune donnée de marché</h1>
+                <p>Le serveur n&apos;a pas encore de prix à rejouer. Dans le dossier <code>backend</code>, lancez :</p>
+                <pre>python -m pipeline tout</pre>
+                <p>Cette commande télécharge les prix, les nettoie et prépare le simulateur. Rechargez ensuite cette page.</p>
+              </main>
+            ) : children}
+          </div>
+        </div>
+        {suivis && <PanneauSuivis fermer={() => setSuivis(false)} />}
       </div>
+      <Recherche ouverte={recherche} fermer={() => setRecherche(false)} />
     </div>
   );
 }
@@ -68,15 +100,16 @@ export default function Coquille({ children }: { children: React.ReactNode }) {
     restaurerSession().then((u) => { setUtilisateur(u); setPret(true); });
   }, []);
 
-  if (!pret) return <p className="chargement" role="status">Chargement…</p>;
-  if (!utilisateur) return <Auth onConnecte={setUtilisateur} />;
-  return (
-    <FournisseurMarche
-      utilisateur={utilisateur}
-      majUtilisateur={setUtilisateur}
-      deconnecter={async () => { await deconnexion(); setUtilisateur(null); }}
-    >
-      <Interieur>{children}</Interieur>
-    </FournisseurMarche>
-  );
+  const contenu = !pret ? <p className="chargement" role="status">Chargement…</p>
+    : !utilisateur ? <Auth onConnecte={setUtilisateur} />
+    : (
+      <FournisseurMarche
+        utilisateur={utilisateur}
+        majUtilisateur={setUtilisateur}
+        deconnecter={async () => { await deconnexion(); setUtilisateur(null); }}
+      >
+        <Interieur>{children}</Interieur>
+      </FournisseurMarche>
+    );
+  return <><FondAnime /><CurseurAnime />{contenu}</>;
 }

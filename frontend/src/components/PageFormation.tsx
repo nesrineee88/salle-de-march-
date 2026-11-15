@@ -1,67 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { api, ErreurApi } from "@/lib/api";
+import { Check, Flame, Gamepad2, GraduationCap, Lock, Play, Swords, Trophy } from "lucide-react";
+import { api } from "@/lib/api";
 import { nombre, pct, pctSigne } from "@/lib/format";
 import { useLecture } from "@/lib/hooks";
-import type { CorrectionLecon, DetailLecon, LigneClasse, LigneLigue, ListeLecons } from "@/lib/types";
+import { niveauDepuis, useJeux } from "@/lib/jeux";
+import type { LigneClasse, LigneLigue, ListeLecons, ResumeLecon } from "@/lib/types";
 import { useMarche } from "./Contexte";
-
-function Lecon({ id, retour }: { id: string; retour: () => void }) {
-  const { donnees: d, erreur } = useLecture<DetailLecon>(`/api/v1/formation/lecons/${id}`, 3_600_000);
-  const [choix, setChoix] = useState<Record<number, number>>({});
-  const [corr, setCorr] = useState<CorrectionLecon | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function envoyer(e: React.FormEvent) {
-    e.preventDefault(); setErr(null);
-    try {
-      const reponses = (d?.questions ?? []).map((q) => (choix[q.index] === undefined ? null : choix[q.index]));
-      setCorr(await api<CorrectionLecon>(`/api/v1/formation/lecons/${id}/repondre`, { methode: "POST", corps: { reponses } }));
-    } catch (exc) { setErr(exc instanceof ErreurApi ? exc.message : "Envoi impossible."); }
-  }
-  if (erreur) return <p className="erreur" role="alert">{erreur}</p>;
-  if (!d) return <p className="vide">Chargement…</p>;
-  return (
-    <>
-      <button className="lien" onClick={retour}>← Toutes les leçons</button>
-      <article className="panneau">
-        <header className="panneau-tete"><h2>{d.titre}</h2><span className="discret">{d.niveau} · {d.minutes} min</span></header>
-        {d.sections.map((s) => <section key={s.titre}><h3 className="titre-section">{s.titre}</h3><p>{s.texte}</p></section>)}
-      </article>
-      <section className="panneau" aria-labelledby="titre-exo">
-        <header className="panneau-tete"><h2 id="titre-exo">À faire dans le simulateur</h2></header>
-        <ul className="strat-prudence">{d.exercices.map((x) => <li key={x.texte}>{x.texte} <Link href={x.lien}>{x.libelle}</Link></li>)}</ul>
-      </section>
-      <form className="panneau" onSubmit={envoyer} aria-labelledby="titre-quiz">
-        <header className="panneau-tete"><h2 id="titre-quiz">Quiz ({d.questions.length} questions)</h2><span className="discret">Réussite à partir de {pct(d.seuil_reussite, 0)}</span></header>
-        {d.questions.map((q) => {
-          const c = corr?.corrections[q.index];
-          return (
-            <fieldset key={q.index} className="quiz-question" disabled={!!corr}>
-              <legend>{q.index + 1}. {q.enonce}</legend>
-              {q.choix.map((txt, i) => (
-                <label key={i} className={c ? (i === c.bonne_reponse ? "quiz-juste" : i === c.repondu ? "quiz-faux" : undefined) : undefined}>
-                  <input type="radio" name={`q${q.index}`} checked={choix[q.index] === i} onChange={() => setChoix({ ...choix, [q.index]: i })} /> {txt}
-                  {c && i === c.bonne_reponse && <strong> ✓ bonne réponse</strong>}{c && i === c.repondu && i !== c.bonne_reponse && <strong> ✕ votre réponse</strong>}
-                </label>
-              ))}
-              {c && <p className="aide">{c.explication}</p>}
-            </fieldset>
-          );
-        })}
-        {err && <p className="erreur" role="alert">{err}</p>}
-        {corr ? (
-          <>
-            <p className={`statut ${corr.reussie ? "gain" : "alerte-texte"}`} role="status">{corr.reussie ? "✓ Leçon réussie" : "! Pas encore"} : {corr.bonnes} bonne(s) réponse(s) sur {corr.total}.</p>
-            <button type="button" className="btn" onClick={() => { setCorr(null); setChoix({}); }}>Réessayer</button>
-          </>
-        ) : <button className="btn btn-principal strat-lancer" type="submit">Corriger</button>}
-      </form>
-    </>
-  );
-}
+import DefiMars2020 from "./DefiMars2020";
+import JeuPiege from "./JeuPiege";
+import LeconInteractive from "./LeconInteractive";
 
 function Ligue() {
   const [date, setDate] = useState("");
@@ -107,9 +56,75 @@ function Classe() {
   );
 }
 
+const VUES = [
+  { cle: "parcours", libelle: "Parcours", icone: GraduationCap },
+  { cle: "jeu", libelle: "Repère le piège", icone: Gamepad2 },
+  { cle: "defi", libelle: "Défi mars 2020", icone: Swords },
+  { cle: "ligue", libelle: "Ligue", icone: Trophy },
+] as const;
+type Vue = (typeof VUES)[number]["cle"] | "classe";
+
+/** Carte de progression : niveau, points, avancement vers le niveau suivant. */
+function Progression({ lecons, pointsJeux }: { lecons: ResumeLecon[]; pointsJeux: number }) {
+  const pointsLecons = lecons.reduce((s, l) => s + (l.reussie ? 100 + Math.round((l.meilleur_score ?? 0) * 50) : Math.round((l.meilleur_score ?? 0) * 30)), 0);
+  const total = pointsLecons + pointsJeux;
+  const n = niveauDepuis(total);
+  const actives = lecons.filter((l) => l.active);
+  const reussies = actives.filter((l) => l.reussie).length;
+  return (
+    <section className="panneau progression" aria-label="Ma progression">
+      <div className="progression-niveau">
+        <span className="progression-badge" aria-hidden="true">{n.numero}</span>
+        <div>
+          <p className="lecon-surtitre">Niveau {n.numero}</p>
+          <h2>{n.nom}</h2>
+        </div>
+      </div>
+      <div className="progression-barre" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(n.avancement * 100)} aria-label="Avancement vers le niveau suivant">
+        <i style={{ width: `${Math.round(n.avancement * 100)}%` }} />
+      </div>
+      <p className="aide">{n.suivant ? `Encore ${n.restant} points pour devenir ${n.suivant}.` : "Niveau maximal atteint."}</p>
+      <ul className="progression-stats">
+        <li><strong>{total}</strong><span>points</span></li>
+        <li><strong>{reussies}/{actives.length}</strong><span>leçons réussies</span></li>
+        <li><strong>{pointsJeux}</strong><span>points de jeux</span></li>
+      </ul>
+    </section>
+  );
+}
+
+function Parcours({ lecons, gestion, ouvrir, activer }: { lecons: ResumeLecon[]; gestion: boolean; ouvrir: (id: string) => void; activer: (id: string, actif: boolean) => Promise<void> }) {
+  const visibles = lecons.filter((l) => l.active || gestion);
+  const prochaine = visibles.find((l) => l.active && !l.reussie)?.id;
+  return (
+    <ol className="parcours" aria-label="Parcours de leçons">
+      {visibles.map((l, i) => {
+        const etat = l.reussie ? "faite" : l.id === prochaine ? "suivante" : l.active ? "libre" : "masquee";
+        return (
+          <li key={l.id} className="parcours-etape" data-etat={etat} data-cote={i % 2 === 0 ? "g" : "d"}>
+            <span className="parcours-noeud" aria-hidden="true">{etat === "faite" ? <Check size={20} /> : etat === "masquee" ? <Lock size={18} /> : etat === "suivante" ? <Play size={18} fill="currentColor" /> : i + 1}</span>
+            <article className="panneau parcours-carte">
+              {etat === "suivante" && <span className="parcours-pastille">À faire maintenant</span>}
+              <h3>{l.titre}</h3>
+              <p className="aide">{l.niveau} · {l.minutes} min · {l.nb_questions} questions</p>
+              <p>{l.resume}</p>
+              <p className={`statut ${l.reussie ? "gain" : "discret"}`}>{l.reussie ? `✓ Réussie (${pct(l.meilleur_score ?? 0, 0)})` : l.tentatives ? `Meilleur score ${pct(l.meilleur_score ?? 0, 0)} en ${l.tentatives} essai(s)` : "Pas encore essayée"}</p>
+              <div className="direct-actions">
+                <button className="btn btn-principal" style={{ width: "auto", marginTop: 0 }} onClick={() => ouvrir(l.id)} disabled={!l.active && !gestion}>{l.reussie ? "Revoir" : l.tentatives ? "Reprendre" : "Commencer"}</button>
+                {gestion && <label className="discret"><input type="checkbox" checked={l.active} onChange={(e) => void activer(l.id, e.target.checked)} /> Visible</label>}
+              </div>
+            </article>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export default function PageFormation() {
   const { utilisateur } = useMarche();
-  const [vue, setVue] = useState<"lecons" | "ligue" | "classe">("lecons");
+  const { points: pointsJeux } = useJeux(utilisateur.email);
+  const [vue, setVue] = useState<Vue>("parcours");
   const [ouverte, setOuverte] = useState<string | null>(null);
   const { donnees, relire } = useLecture<ListeLecons>("/api/v1/formation/lecons", 15_000);
   const gestion = utilisateur.role === "formateur" || utilisateur.role === "admin";
@@ -118,36 +133,32 @@ export default function PageFormation() {
     await api(`/api/v1/formation/lecons/${id}/activation`, { methode: "PATCH", corps: { actif } });
     await relire();
   }
+  const changer = (v: Vue) => { setVue(v); setOuverte(null); };
+
+  if (ouverte) {
+    return <main className="page"><LeconInteractive id={ouverte} retour={() => { setOuverte(null); void relire(); }} /></main>;
+  }
   return (
-    <main className="page">
+    <main className="page formation">
       <header className="page-tete">
         <h1>Formation</h1>
-        <p className="aide">Des leçons courtes, des quiz corrigés par le serveur et des exercices à faire dans le simulateur.
-          {donnees && ` Vous avez réussi ${donnees.progression.lecons_reussies} leçon(s) sur ${donnees.progression.lecons_actives}.`}</p>
+        <p className="aide">Apprenez en jouant : leçons courtes, quiz corrigés par le serveur, mini-jeu et défi dans le simulateur.</p>
       </header>
-      <div className="onglets" role="tablist" aria-label="Formation">
-        <button role="tab" aria-selected={vue === "lecons"} className="onglet" onClick={() => { setVue("lecons"); setOuverte(null); }}>Leçons</button>
-        <button role="tab" aria-selected={vue === "ligue"} className="onglet" onClick={() => setVue("ligue")}>Ligue</button>
-        {gestion && <button role="tab" aria-selected={vue === "classe"} className="onglet" onClick={() => setVue("classe")}>Ma classe</button>}
+
+      {donnees && <Progression lecons={donnees.lecons} pointsJeux={pointsJeux} />}
+
+      <div className="onglets formation-onglets" role="tablist" aria-label="Formation">
+        {VUES.map(({ cle, libelle, icone: Icone }) => (
+          <button key={cle} role="tab" aria-selected={vue === cle} className="onglet" onClick={() => changer(cle)}><Icone size={16} aria-hidden="true" /> {libelle}</button>
+        ))}
+        {gestion && <button role="tab" aria-selected={vue === "classe"} className="onglet" onClick={() => changer("classe")}><Flame size={16} aria-hidden="true" /> Ma classe</button>}
       </div>
+
+      {vue === "parcours" && (donnees ? <Parcours lecons={donnees.lecons} gestion={gestion} ouvrir={setOuverte} activer={activer} /> : <p className="vide">Chargement…</p>)}
+      {vue === "jeu" && <JeuPiege />}
+      {vue === "defi" && <DefiMars2020 />}
       {vue === "ligue" && <Ligue />}
       {vue === "classe" && gestion && <Classe />}
-      {vue === "lecons" && (ouverte ? <Lecon id={ouverte} retour={() => { setOuverte(null); void relire(); }} /> : (
-        <div className="grille-3">
-          {(donnees?.lecons ?? []).map((l) => (
-            <article key={l.id} className={`panneau lecon-carte${l.active ? "" : " lecon-inactive"}`}>
-              <header className="panneau-tete"><h2>{l.titre}</h2></header>
-              <p className="aide">{l.niveau} · {l.minutes} min · {l.nb_questions} questions</p>
-              <p>{l.resume}</p>
-              <p className={`statut ${l.reussie ? "gain" : "discret"}`}>{l.reussie ? `✓ Réussie (${pct(l.meilleur_score ?? 0, 0)})` : l.tentatives ? `Essayée ${l.tentatives} fois, meilleur score ${pct(l.meilleur_score ?? 0, 0)}` : "Pas encore essayée"}</p>
-              <div className="direct-actions">
-                <button className="btn btn-principal" style={{ width: "auto", marginTop: 0 }} onClick={() => setOuverte(l.id)} disabled={!l.active && !gestion}>{l.reussie ? "Revoir" : "Commencer"}</button>
-                {gestion && <label className="discret"><input type="checkbox" checked={l.active} onChange={(e) => void activer(l.id, e.target.checked)} /> Visible</label>}
-              </div>
-            </article>
-          ))}
-        </div>
-      ))}
     </main>
   );
 }

@@ -104,7 +104,37 @@ export async function inscription(email: string, nom: string, motDePasse: string
   }
 }
 
+/** Lit le résultat d'une connexion Google/GitHub dans le fragment d'URL (#session=… ou #erreur=…), puis le retire de la barre d'adresse. */
+export function lireRetourOauth(): { erreur: string | null } {
+  if (typeof window === "undefined" || !window.location.hash) return { erreur: null };
+  const h = new URLSearchParams(window.location.hash.slice(1));
+  const session = h.get("session");
+  const erreur = h.get("erreur");
+  if (!session && !erreur) return { erreur: null };
+  if (session) localStorage.setItem(CLE_REFRESH, session);
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+  return { erreur };
+}
+
+export async function fournisseursOauth(): Promise<string[]> {
+  try {
+    const r = await appeler("/api/v1/auth/oauth/fournisseurs", "GET");
+    return r.ok ? ((await r.json()).fournisseurs as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+let erreurOauthLue: string | null = null;
+/** Message d'une connexion Google/GitHub qui a échoué (lu une seule fois au chargement). */
+export function erreurOauth(): string | null {
+  const e = erreurOauthLue;
+  erreurOauthLue = null;
+  return e;
+}
+
 export async function restaurerSession(): Promise<Utilisateur | null> {
+  erreurOauthLue = lireRetourOauth().erreur;
   if (!(await tenterRafraichissement())) return null;
   try {
     return await api<Utilisateur>("/api/v1/moi");

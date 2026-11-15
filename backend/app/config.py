@@ -30,3 +30,12 @@ MARQUEUR_SYNTHETIQUE = CLEAN_DIR / "DONNEES_SYNTHETIQUES.txt"
 # Mode Direct (bêta) : flux de prix récents depuis Yahoo Finance. SDM_DIRECT=0 pour le désactiver.
 DIRECT_ACTIF = os.environ.get("SDM_DIRECT", "1") != "0"
 DIRECT_DEMO = os.environ.get("SDM_DIRECT_DEMO", "0") == "1"      # flux inventé, pour tester sans Internet (jamais de vrais cours)
+
+# --- Connexion avec Google / GitHub (facultative) ------------------------------------------------
+# Un fournisseur n'apparaît dans l'interface que si son identifiant ET son secret sont définis.
+# URL_FRONT : adresse du site vue par le navigateur (le front relaie /api vers le backend).
+URL_FRONT = os.environ.get("SDM_URL_FRONT", "http://localhost:3000").rstrip("/")
+GOOGLE_CLIENT_ID = os.environ.get("SDM_GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("SDM_GOOGLE_CLIENT_SECRET")
+GITHUB_CLIENT_ID = os.environ.get("SDM_GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.environ.get("SDM_GITHUB_CLIENT_SECRET")

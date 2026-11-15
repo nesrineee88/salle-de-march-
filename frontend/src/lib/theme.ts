@@ -5,8 +5,6 @@ import { useSyncExternalStore } from "react";
 export type Theme = "sombre" | "clair";
 const CLE = "sdm.theme";
 
-/** Script exécuté avant l'affichage : applique le thème enregistré, pour éviter un éclair de la mauvaise couleur. */
-export const SCRIPT_THEME = `try{if(localStorage.getItem("${CLE}")==="clair"){document.documentElement.dataset.theme="clair"}}catch(e){}`;
 
 export function themeCourant(): Theme {
   return typeof document !== "undefined" && document.documentElement.dataset.theme === "clair" ? "clair" : "sombre";
