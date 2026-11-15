@@ -13,7 +13,7 @@ Règles de la version 1 (documentées dans docs/DECISIONS.md) :
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from ..marche.catalogue import Actif, Univers
 from ..marche.moteur import MoteurMarche
@@ -226,12 +226,15 @@ class SalleDeMarche:
         return cout + restant * (derniere + FRAIS_BPS[actif.classe] * abs(derniere) / 1e4)
 
     # ------------------------------------------------------------------ exécution
-    def _executer(self, compte: Compte, o: Ordre, t: datetime, limite: float | None) -> float:
+    def _executer(
+        self, compte: Compte, o: Ordre, t: datetime, limite: float | None,
+        prix_reference: float | None = None,
+    ) -> float:
         cot = self._cotation(o.symbole, t)
         if cot is None or cot.statut != "ouvert":
             return 0.0
         actif = self._univers[o.symbole]
-        ref = cot.prix + self._impact(o.symbole, t)
+        ref = prix_reference if prix_reference is not None else cot.prix + self._impact(o.symbole, t)
         carnet = construire_carnet(o.symbole, actif.classe, ref, self._liquidites.get(o.symbole, 1.0))
         niveaux = carnet.ventes if o.sens == ACHAT else carnet.achats
 
@@ -419,20 +422,50 @@ class SalleDeMarche:
             if cot is None or cot.statut != "ouvert":
                 continue                                       # comme un stop : la règle attend l'ouverture du marché
             ref = cot.prix + self._impact(r.symbole, ts)
+            prix_reference = None
+            prix_ouverture = None
+            if r.type in (STOP_LOSS, TAKE_PROFIT):
+                barre = cot.barre_en_formation
+                ouverture = barre.get("open") if barre else None
+                debut_session = datetime.combine(
+                    ts.date(), self._univers[r.symbole].session_utc[0]
+                    if self._univers[r.symbole].session_utc else time.min,
+                )
+                if r.cree_le < debut_session and ouverture is not None:
+                    prix_ouverture = ouverture + self._impact(r.symbole, ts)
             if r.type == STOP_SUIVEUR:
                 if r.plus_haut is None or ref > r.plus_haut:
                     r.plus_haut = ref
                     self.version += 1
                 atteint = ref <= r.plus_haut * (1 - r.seuil)
             elif r.type == STOP_LOSS:
-                atteint = ref <= pos.prix_moyen * (1 + r.seuil)
-            else:                                              # prise de profit ou achat complémentaire
+                niveau = pos.prix_moyen * (1 + r.seuil)
+                if prix_ouverture is not None and prix_ouverture <= niveau:
+                    atteint = True
+                    prix_reference = prix_ouverture
+                else:
+                    atteint = ref <= niveau
+                    if atteint:
+                        prix_reference = niveau + self._impact(r.symbole, ts)
+            elif r.type == TAKE_PROFIT:
+                niveau = pos.prix_moyen * (1 + r.seuil)
+                if prix_ouverture is not None and prix_ouverture >= niveau:
+                    atteint = True
+                    prix_reference = prix_ouverture
+                else:
+                    atteint = ref >= niveau
+                    if atteint:
+                        prix_reference = niveau + self._impact(r.symbole, ts)
+            else:                                              # achat complémentaire
                 atteint = ref >= pos.prix_moyen * (1 + r.seuil)
             if atteint:
-                self._declencher(compte, r, pos, ts)
+                self._declencher(compte, r, pos, ts, prix_reference)
 
-    def _declencher(self, compte: Compte, r: Regle, pos: Position, ts: datetime) -> None:
-        """Place l'ordre au marché de la règle (comme un stop : sur un gap, au prix du marché, pas au prix du seuil)."""
+    def _declencher(
+        self, compte: Compte, r: Regle, pos: Position, ts: datetime,
+        prix_reference: float | None = None,
+    ) -> None:
+        """Place l'ordre au marché; SL/TP prennent l'ouverture sur gap, le seuil sinon."""
         if r.type == ACHAT_COMPLEMENTAIRE:
             sens, quantite = ACHAT, pos.quantite * r.part
         else:
@@ -454,7 +487,7 @@ class SalleDeMarche:
             ordre.statut, ordre.motif = REJETE, motif
             r.statut, r.declenchee_le, r.motif = ECHEC, ts, f"ordre refusé : {motif}"
             return
-        self._executer(compte, ordre, ts, limite=None)
+        self._executer(compte, ordre, ts, limite=None, prix_reference=prix_reference)
         if ordre.reste <= EPS:
             ordre.statut = EXECUTE
         elif ordre.quantite_executee > 0:
