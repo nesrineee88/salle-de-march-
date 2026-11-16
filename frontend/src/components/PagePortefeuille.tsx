@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { lienActif } from "@/lib/actif";
 import { dateHeure, montant, montantSigne, nombre, pct, pctSigne, prix, quantite } from "@/lib/format";
 import { useLecture } from "@/lib/hooks";
+import { decouperPeriode, type CleePeriode } from "@/lib/portefeuille";
 import { LIBELLE_STATUT_REGLE, libelleRegle } from "@/lib/regles";
 import type { Analyse, HistoriqueValeur, Position, Trade } from "@/lib/types";
 import { useMarche } from "./Contexte";
@@ -16,6 +17,7 @@ import HistoriquePositions from "./HistoriquePositions";
 import HistoriqueTransactions from "./HistoriqueTransactions";
 import Indicateur from "./Indicateur";
 import PanneauDiversification from "./PanneauDiversification";
+import { CartePositions, CascadeResultat, ChoixPeriode, RisqueSecteurs, SousLEau } from "./VisuelsPortefeuille";
 
 const STATUTS = {
   ok: { icone: "✓", titre: "Dans votre tolérance", classe: "jauge-ok" },
@@ -216,13 +218,15 @@ function Journal({ trades }: { trades: Trade[] | null }) {
 }
 
 export default function PagePortefeuille() {
-  const { pf, inst } = useMarche();
+  const { pf, inst, actifs } = useMarche();
+  const [periode, setPeriode] = useState<CleePeriode>("tout");
   const { donnees: analyse } = useLecture<Analyse>("/api/v1/portefeuille/analyse", 4000);
   const { donnees: hist } = useLecture<HistoriqueValeur>("/api/v1/portefeuille/historique", 4000);
   const { donnees: trades } = useLecture<Trade[]>("/api/v1/portefeuille/trades", 5000);
   const perf = analyse?.performance;
   const risque = analyse?.risque;
   const rendement = pf && pf.capital_initial ? pf.pnl_total / pf.capital_initial : null;
+  const points = useMemo(() => decouperPeriode(hist?.points ?? [], periode), [hist, periode]);
 
   return (
     <main className="page">
@@ -262,10 +266,17 @@ export default function PagePortefeuille() {
         </section>
       </div>
 
+      <div className="grille-2">
+        <CartePositions pf={pf} actifs={actifs} />
+        <CascadeResultat pf={pf} />
+      </div>
+
       <div className="grille-courbe">
-        <section className="panneau">
-          <header className="panneau-tete"><h2>Valeur au fil du temps</h2></header>
-          {hist ? <Courbe points={hist.points} capitalInitial={hist.capital_initial} nomReference="S&P 500" /> : <p className="vide">Chargement…</p>}
+        <section className="panneau" aria-labelledby="titre-courbe">
+          <header className="panneau-tete"><h2 id="titre-courbe">Valeur au fil du temps</h2><ChoixPeriode valeur={periode} changer={setPeriode} /></header>
+          {hist ? <Courbe points={points} nomReference="S&P 500" {...(periode === "tout" ? { capitalInitial: hist.capital_initial } : { capitalInitial: points[0]?.equity ?? hist.capital_initial, libelleDepart: "de la valeur au début de la période" })} /> : <p className="chargement">Chargement…</p>}
+          <h3 className="sous-titre">Plongée : baisse depuis le sommet (drawdown)</h3>
+          {hist && <SousLEau points={points} />}
         </section>
         <ProfilVsRisque analyse={analyse} />
       </div>
@@ -310,7 +321,11 @@ export default function PagePortefeuille() {
       </div>
 
       <div className="grille-2">
+        <RisqueSecteurs analyse={analyse} pf={pf} />
         <PanneauDiversification analyse={analyse} />
+      </div>
+
+      <div className="grille-2">
         <section className="panneau">
           <header className="panneau-tete"><h2>Corrélations entre vos actifs</h2></header>
           {analyse?.correlations ? (

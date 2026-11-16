@@ -17,7 +17,7 @@ const PALETTES: Record<"sombre" | "clair", { neutre: Rvb; positif: Rvb; negatif:
   clair: { neutre: [238, 242, 246], positif: [15, 111, 208], negatif: [194, 74, 20] },
 };
 
-function couleur(r: number, theme: "sombre" | "clair"): { fond: string; texte: string } {
+export function couleur(r: number, theme: "sombre" | "clair"): { fond: string; texte: string } {
   const { neutre: NEUTRE, positif: POSITIF, negatif: NEGATIF } = PALETTES[theme];
   const pole = r >= 0 ? POSITIF : NEGATIF;
   const t = Math.min(1, Math.abs(r));
