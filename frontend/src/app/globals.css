@@ -1261,14 +1261,14 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .kpis-portefeuille .indicateur-grand .indicateur-valeur { font-size: clamp(1.5rem, 8.5cqi, 3rem); font-variant-numeric: tabular-nums; }
 .indicateur-unite { font-size: 0.5em; font-weight: 500; color: var(--discret); white-space: nowrap; }
 .indicateur-libelle { display: flex; align-items: center; gap: 0.35rem; }
-.info { position: relative; display: inline-flex; }
+.info-carte { position: relative; display: inline-flex; }
 .info-bouton { width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 1px solid var(--trait-fort); background: none; color: var(--discret);
   font-size: 0.7rem; font-weight: 700; font-style: italic; line-height: 1; display: grid; place-items: center; padding: 0; cursor: help; }
 .info-bouton:hover, .info-bouton:focus-visible { color: var(--texte); border-color: var(--accent); outline: none; }
 .info-bulle { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); z-index: 6; width: max-content; max-width: min(17rem, 80vw);
   background: var(--nuit-2); color: var(--texte); border: 1px solid var(--trait-fort); border-radius: 6px; padding: 0.45rem 0.6rem;
   font-size: 0.78rem; line-height: 1.45; box-shadow: 0 6px 18px rgb(0 0 0 / 0.25); visibility: hidden; opacity: 0; transition: opacity 0.15s ease; }
-.info:hover .info-bulle, .info:focus-within .info-bulle { visibility: visible; opacity: 1; }
+.info-carte:hover .info-bulle, .info-carte:focus-within .info-bulle { visibility: visible; opacity: 1; }
 .mini-courbe-carte { width: 100%; height: 2.4rem; margin-top: 0.35rem; display: block; }
 .mini-courbe-carte .mini-courbe-ligne { fill: none; stroke: currentColor; stroke-width: 2; }
 .mini-courbe-carte .mini-courbe-aire { fill: currentColor; opacity: 0.12; }
