@@ -1159,3 +1159,30 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .entete-droite { gap: 0.5rem; }
 @media (prefers-reduced-motion: reduce) { .btn-rond, .btn-rond::after { transition: none; } }
 
+
+/* ---------- tableau de bord : niveau de risque, alertes des règles, vues simple et professionnelle ---------- */
+.page-tete:has(.choix-vue) { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem 1.5rem; }
+.choix-vue { display: inline-flex; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 2px; gap: 2px; }
+.choix-vue button { background: none; border: 0; border-radius: 999px; padding: 0.3rem 0.85rem; color: var(--discret); font-size: 0.8125rem; }
+.choix-vue button:hover { color: var(--texte); }
+.choix-vue button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); font-weight: 600; }
+.choix-vue button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.niveau-risque { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; list-style: none; padding: 0; margin: 0.3rem 0 0.7rem; }
+.niveau-risque li { text-align: center; font-size: 0.8125rem; padding: 0.4rem 0.2rem; border-radius: 6px; background: var(--surface-3); color: var(--discret); transition: background-color 0.3s ease, color 0.3s ease; }
+.niveau-risque li[data-actif="true"] { font-weight: 700; color: var(--sur-couleur); }
+.niveau-risque li[data-actif="true"][data-niveau="faible"] { background: var(--ok); }
+.niveau-risque li[data-actif="true"][data-niveau="modere"] { background: var(--alerte); }
+.niveau-risque li[data-actif="true"][data-niveau="eleve"] { background: var(--perte); }
+.alerte-danger { border-color: var(--perte); }
+.alerte-danger .alerte-icone { color: var(--perte); font-size: 0.625rem; }
+.texte-alerte { color: var(--alerte); font-weight: 600; }
+.alertes-regles { list-style: none; padding: 0; display: grid; gap: 0.65rem; margin-top: 0.3rem; }
+.alerte-regle-tete { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; font-size: 0.875rem; margin-bottom: 0.25rem; }
+.alertes-regles li[data-proche="true"] .barre-rempli { background: var(--alerte); }
+.alertes-regles .barre-rempli { transition: width 0.4s ease; }
+.liste-simple { list-style: none; padding: 0; display: grid; gap: 0.45rem; font-size: 0.875rem; line-height: 1.45; }
+.liste-simple li { padding-top: 0.45rem; border-top: 1px solid var(--trait); }
+.liste-simple li:first-child { border-top: 0; padding-top: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .niveau-risque li, .alertes-regles .barre-rempli { transition: none; }
+}

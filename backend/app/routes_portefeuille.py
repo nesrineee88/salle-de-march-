@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 
 from .contexte import Contexte, acces_bac, obtenir_contexte
 from .risque.analyse import analyser, simuler_choc_sectoriel
-from .trading.salle import ordre_en_dict
+from .risque.synthese import alertes_regles, niveau_risque
+from .routes_regles import _niveau as niveau_regle
+from .trading.salle import ordre_en_dict, regle_en_dict
 from .utilisateurs.modeles import Utilisateur
 from .utilisateurs.routes import exiger, publique, utilisateur_courant
 
@@ -22,14 +24,36 @@ class CorpsChocSectoriel(BaseModel):
     choc_pct: float = Field(ge=-100, le=300, allow_inf_nan=False)
 
 
+def _analyser_bac(ctx: Contexte, bac, t, u: Utilisateur) -> dict:
+    """Analyse du portefeuille à l'instant simulé t (à appeler sous le verrou du bac)."""
+    valo = bac.salle.valorisation(bac.compte_id, t)
+    series = {p["symbole"]: ctx.magasin.barres_terminees(p["symbole"], t.date(), n=FENETRE_RISQUE_JOURS)["close"]
+              for p in valo["positions"] if ctx.magasin.a_des_donnees(p["symbole"])}
+    catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
+    return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque)
+
+
 @routeur.get("/portefeuille/analyse")
 def analyse(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     with acces_bac(ctx, u) as (bac, t):
+        return _analyser_bac(ctx, bac, t, u)
+
+
+@routeur.get("/tableau-de-bord")
+def tableau_de_bord(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
+    """Synthèse calculée côté serveur pour le tableau de bord : niveau de risque, alertes des règles, répartition."""
+    with acces_bac(ctx, u) as (bac, t):
+        a = _analyser_bac(ctx, bac, t, u)
         valo = bac.salle.valorisation(bac.compte_id, t)
-        series = {p["symbole"]: ctx.magasin.barres_terminees(p["symbole"], t.date(), n=FENETRE_RISQUE_JOURS)["close"]
-                  for p in valo["positions"] if ctx.magasin.a_des_donnees(p["symbole"])}
-        catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
-        return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque)
+        positions = {p["symbole"]: p for p in valo["positions"]}
+        regles = []
+        for r in bac.salle.compte(bac.compte_id).regles.values():
+            d = regle_en_dict(r)
+            d["niveau"] = niveau_regle(d, positions.get(r.symbole))
+            regles.append(d)
+    prix = {s: p["prix_marche"] for s, p in positions.items()}
+    return {"instant": a["instant"], "niveau_risque": niveau_risque(a), "alertes": alertes_regles(regles, prix),
+            "repartition_detail": a["repartition_detail"], "risque": a["risque"], "performance": a["performance"]}
 
 
 @routeur.post("/portefeuille/simuler-choc")
