@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from .contexte import Contexte, acces_bac, obtenir_contexte
 from .risque.analyse import analyser, simuler_choc_sectoriel
+from .trading.historique import historique_positions
 from .trading.salle import ordre_en_dict
 from .utilisateurs.modeles import Utilisateur
 from .utilisateurs.routes import exiger, publique, utilisateur_courant
@@ -77,6 +78,19 @@ def trades_clotures(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = 
                        "prix_achat_moyen": prix_achat, "prix_vente": e.prix, "pnl": pnl, "frais": e.frais,
                        "rendement": (e.prix / prix_achat - 1) if prix_achat else None})
     return sortie
+
+
+@routeur.get("/portefeuille/positions/historique")
+def historique_des_positions(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
+    """Chaque position, de son ouverture à sa clôture : une position clôturée reste dans l'historique."""
+    with acces_bac(ctx, u) as (bac, _t):
+        compte = bac.salle.compte(bac.compte_id)
+        executions = [{"ordre_id": e.ordre_id, "symbole": e.symbole, "sens": e.sens, "quantite": e.quantite, "prix": e.prix,
+                       "frais": e.frais, "instant": e.instant.isoformat(timespec="seconds"), "pnl": e.pnl}
+                      for e in compte.executions]
+        origines = {o.id: o.origine for o in compte.ordres.values()}
+        types_regles = {r.id: r.type for r in compte.regles.values()}
+    return historique_positions(executions, origines, types_regles)
 
 
 @routeur.get("/moi/export")

@@ -11,6 +11,7 @@ import { useMarche } from "./Contexte";
 import Correlations from "./Correlations";
 import Courbe from "./Courbe";
 import { DonutRepartition, PerformancesPositions } from "./GraphiquesPortefeuille";
+import HistoriquePositions from "./HistoriquePositions";
 import HistoriqueTransactions from "./HistoriqueTransactions";
 import Indicateur from "./Indicateur";
 import PanneauDiversification from "./PanneauDiversification";
@@ -78,7 +79,7 @@ function Repartition({ analyse }: { analyse: Analyse | null }) {
 
 function Journal({ trades }: { trades: Trade[] | null }) {
   const { pf, ordres, execs, annuler, envoyer, regles, supprimerRegle, actifs } = useMarche();
-  const [onglet, setOnglet] = useState<"positions" | "trades" | "ordres" | "executions" | "regles">("positions");
+  const [onglet, setOnglet] = useState<"positions" | "historique" | "trades" | "ordres" | "executions" | "regles">("positions");
   const [fermeture, setFermeture] = useState<string | null>(null);
   const [messageFermeture, setMessageFermeture] = useState<{ texte: string; classe: "message-ok" | "erreur" | "notes" } | null>(null);
   const origines = new Map(ordres.map((o) => [o.id, o.origine]));
@@ -87,12 +88,14 @@ function Journal({ trades }: { trades: Trade[] | null }) {
   const LIBELLE_STATUT: Record<string, string> = { en_attente: "En attente", partiel: "Partiel", execute: "Exécuté", annule: "Annulé", rejete: "Refusé" };
   const LIBELLE_TYPE: Record<string, string> = { marche: "Marché", limite: "Limite", stop: "Stop" };
 
-  async function cloturer(position: Position) {
-    if (!window.confirm(`Confirmer la vente au marché de ${quantite(position.quantite)} ${position.symbole} ?`)) return;
+  /** Vend toute la position (part = 1) ou une partie (clôture partielle) au marché. */
+  async function cloturer(position: Position, part = 1) {
+    const q = part >= 1 ? position.quantite : position.quantite * part;
+    if (!window.confirm(`Confirmer la vente au marché de ${quantite(q)} ${position.symbole}${part < 1 ? ` (${pct(part, 0)} de la position)` : ""} ?`)) return;
     setFermeture(position.symbole);
     setMessageFermeture(null);
     try {
-      const ordre = await envoyer({ symbole: position.symbole, sens: "vente", quantite: position.quantite, type: "marche" });
+      const ordre = await envoyer({ symbole: position.symbole, sens: "vente", quantite: q, type: "marche" });
       if (ordre.statut === "execute") setMessageFermeture({ classe: "message-ok", texte: `Vente exécutée : ${quantite(ordre.quantite_executee)} ${position.symbole}.` });
       else if (ordre.statut === "partiel") setMessageFermeture({ classe: "erreur", texte: `Vente partielle : ${quantite(ordre.quantite_executee)} ${position.symbole} exécutés.` });
       else if (ordre.statut === "rejete") setMessageFermeture({ classe: "erreur", texte: `Ordre refusé : ${ordre.motif ?? "motif indisponible"}.` });
@@ -108,6 +111,7 @@ function Journal({ trades }: { trades: Trade[] | null }) {
     <section className="panneau panneau-tableau">
       <div className="onglets" role="tablist" aria-label="Détail du portefeuille">
         <button role="tab" aria-selected={onglet === "positions"} className="onglet" onClick={() => setOnglet("positions")}>Positions ({pf?.positions.length ?? 0})</button>
+        <button role="tab" aria-selected={onglet === "historique"} className="onglet" onClick={() => setOnglet("historique")}>Historique des positions</button>
         <button role="tab" aria-selected={onglet === "trades"} className="onglet" onClick={() => setOnglet("trades")}>Trades clôturés ({trades?.length ?? 0})</button>
         <button role="tab" aria-selected={onglet === "ordres"} className="onglet" onClick={() => setOnglet("ordres")}>Ordres{ouverts.length > 0 ? ` (${ouverts.length} en attente)` : ""}</button>
         <button role="tab" aria-selected={onglet === "executions"} className="onglet" onClick={() => setOnglet("executions")}>Historique des transactions ({execs.length})</button>
@@ -130,6 +134,7 @@ function Journal({ trades }: { trades: Trade[] | null }) {
                       <button type="button" className="btn btn-danger btn-auto" disabled={fermeture !== null} onClick={() => void cloturer(p)}>
                         {fermeture === p.symbole ? "Envoi…" : "Clôturer"}
                       </button>
+                      <button type="button" className="lien" disabled={fermeture !== null} onClick={() => void cloturer(p, 0.5)}>Vendre la moitié</button>
                       {actif && <Link className="lien-discret" href={lienActif(actif)}>Règles SL/TP</Link>}
                     </td>
                   </tr>
@@ -170,6 +175,8 @@ function Journal({ trades }: { trades: Trade[] | null }) {
             </tbody>
           </table>
         ) : <p className="vide">Aucun ordre pour le moment.</p>)}
+
+        {onglet === "historique" && <HistoriquePositions />}
 
         {onglet === "executions" && <HistoriqueTransactions />}
 

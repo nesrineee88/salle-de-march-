@@ -525,3 +525,21 @@ export interface StatsAdmin {
     duree_jeton_acces_minutes: number; duree_session_jours: number; echecs_avant_verrouillage: number; note: string };
 }
 export interface PerformanceAdmin { id: number; nom: string; email: string; role: string; actif: boolean; profil_risque: string | null; portefeuille: { rendement: number; drawdown: number; score: number; date_simulee: string; points: number; valeur: number } | null }
+
+// ----------------------------------------------------------------------------- historique des positions (ouverture → clôture)
+export interface PositionHistorique {
+  symbole: string;
+  statut: "ouverte" | "cloturee";
+  ouverte_le: string;
+  cloturee_le: string | null;
+  quantite_max: number;
+  quantite_restante: number;
+  prix_achat_moyen: number | null;
+  prix_vente_moyen: number | null;
+  pnl_realise: number;
+  frais: number;
+  resultat_net: number;            // réalisé − frais du cycle
+  rendement_net: number | null;    // résultat net / coût des achats
+  motif_cloture: "manuelle" | "stop_loss" | "take_profit" | "stop_suiveur" | "achat_complementaire" | "regle" | null;
+  nb_operations: number;
+}
