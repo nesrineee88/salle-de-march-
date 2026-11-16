@@ -1159,3 +1159,63 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .entete-droite { gap: 0.5rem; }
 @media (prefers-reduced-motion: reduce) { .btn-rond, .btn-rond::after { transition: none; } }
 
+
+/* ---------- portefeuille visuel : bandeau, cascade, carte des positions, risque par secteur, plongée ---------- */
+.visuel-zone { position: relative; width: 100%; }
+.visuel-zone svg { display: block; overflow: visible; }
+.infobulle { position: absolute; z-index: 5; pointer-events: none; max-width: 17rem; background: var(--nuit-2); border: 1px solid var(--trait-fort); border-radius: 8px; padding: 0.45rem 0.6rem; box-shadow: 0 6px 18px rgb(0 0 0 / 0.25); font-size: 0.78rem; line-height: 1.4; color: var(--discret); }
+.infobulle-fort { font-weight: 700; font-size: 0.9rem; color: var(--texte); font-variant-numeric: tabular-nums; }
+.infobulle-fort.gain { color: var(--gain); }
+.infobulle-fort.perte { color: var(--perte); }
+.bandeau-valeur { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.5rem; align-items: center; background: linear-gradient(135deg, var(--hero-1), var(--hero-2)); }
+.bandeau-libelle { font-size: 0.8125rem; color: var(--discret); font-weight: 500; }
+.bandeau-montant { font-family: var(--police-titre); font-size: clamp(1.9rem, 4vw, 2.7rem); font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.bandeau-montant small { font-size: 0.45em; color: var(--discret); font-weight: 500; }
+.bandeau-variation { font-weight: 600; margin: 0.2rem 0 0.8rem; font-variant-numeric: tabular-nums; }
+.composition { display: flex; gap: 2px; height: 12px; border-radius: 6px; overflow: hidden; background: var(--surface-3); }
+.composition span { min-width: 2px; transition: flex-grow 0.5s ease; }
+.composition-investi { background: var(--serie-5); }
+.composition-cash { background: var(--ref); }
+.legende-composition { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; font-size: 0.8rem; margin-top: 0.45rem; color: var(--discret); }
+.pastille-carree { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 3px; vertical-align: -1px; margin-right: 0.3rem; }
+.mini-courbe svg { display: block; width: 100%; cursor: crosshair; }
+.mini-aire { fill: color-mix(in srgb, var(--serie-5) 22%, transparent); }
+.mini-ligne { fill: none; stroke: var(--serie-5); stroke-width: 2; }
+.mini-point, .sous-eau-point { fill: var(--nuit-2); stroke-width: 2; }
+.mini-point { stroke: var(--serie-5); }
+.mini-lecture { min-height: 1.2em; }
+.cascade-marche { cursor: default; outline: none; }
+.cascade-marche:focus-visible rect[rx] { stroke: var(--accent); stroke-width: 2; }
+.cascade-total { fill: var(--barre); }
+.cascade-hausse { fill: var(--gain); }
+.cascade-baisse { fill: var(--perte); }
+.cascade-marche:hover rect[rx] { filter: brightness(1.12); }
+.cascade-lien { stroke: var(--trait-fort); stroke-width: 1; }
+.graphe-texte-fort { fill: var(--texte); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tuile { cursor: pointer; outline: none; }
+.tuile rect { transition: filter 0.2s ease; }
+.tuile:hover rect, .tuile:focus-visible rect { filter: brightness(1.15); stroke: var(--accent); stroke-width: 2; }
+.tuile-texte { font-size: 12px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.risque-secteurs { list-style: none; padding: 0; display: grid; gap: 0.85rem; }
+.risque-secteur-tete { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; font-size: 0.875rem; margin-bottom: 0.3rem; }
+.risque-secteur-statut { font-size: 0.8rem; }
+.risque-secteurs li[data-statut="ok"] .risque-secteur-statut { color: var(--ok); }
+.risque-secteurs li[data-statut="attention"] .risque-secteur-statut { color: var(--alerte); }
+.risque-secteurs li[data-statut="danger"] .risque-secteur-statut { color: var(--perte); font-weight: 600; }
+.risque-piste { position: relative; height: 10px; border-radius: 5px; background: var(--surface-3); }
+.risque-rempli { display: block; height: 100%; border-radius: 5px; min-width: 2px; transition: width 0.5s ease; }
+.risque-secteurs li[data-statut="ok"] .risque-rempli { background: var(--ok); }
+.risque-secteurs li[data-statut="attention"] .risque-rempli { background: var(--alerte); }
+.risque-secteurs li[data-statut="danger"] .risque-rempli { background: var(--perte); }
+.risque-seuil { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--discret); }
+.sous-eau-aire { fill: color-mix(in srgb, var(--perte) 22%, transparent); }
+.sous-eau-ligne { fill: none; stroke: var(--perte); stroke-width: 2; }
+.sous-eau-point { stroke: var(--perte); }
+.panneau-tete .choix-filtre { margin: 0; }
+.choix-filtre { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0; }
+.choix-filtre button { background: none; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 0.25rem 0.7rem; color: var(--discret); font-size: 0.8125rem; }
+.choix-filtre button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); border-color: var(--accent); font-weight: 600; }
+.choix-filtre button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+@media (max-width: 900px) { .bandeau-valeur { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .panneau-tete:has(.choix-filtre) { flex-direction: column; align-items: flex-start; } }
+@media (prefers-reduced-motion: reduce) { .composition span, .risque-rempli, .tuile rect { transition: none; } }
