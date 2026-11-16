@@ -1,7 +1,7 @@
 """Route des indicateurs techniques d'un actif, à la date simulée de l'utilisateur."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,6 +13,8 @@ from ..trading.carnet import FRAIS_BPS, SPREAD_BPS
 from ..utilisateurs.modeles import Utilisateur
 from ..utilisateurs.routes import exiger
 from . import backtest as bt
+from . import bougies as bg
+from . import niveaux as nv
 from .indicateurs import PARAMETRES, calculer_tout
 
 routeur = APIRouter(prefix="/api/v1")
@@ -38,6 +40,44 @@ def indicateurs(symbole: str, barres: int = Query(250, ge=1, le=2000),
         "series": {nom: valeurs[-barres:] for nom, valeurs in tout.items()},
         "parametres": PARAMETRES,
     }
+
+
+@routeur.get("/bougies/{symbole:path}")
+def bougies(symbole: str, unite: str = Query("1j", description="1min, 5min, 15min, 1h ou 1j"), barres: int = Query(300, ge=1, le=1000),
+            ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("marche.lire"))):
+    """Bougies de l'unité demandée jusqu'à l'instant simulé, avec les indicateurs calculés sur ces mêmes bougies.
+    Temps `t` en secondes UTC. En intrajournalier, les bougies viennent des ticks simulés (voir analyse/bougies.py)."""
+    if unite not in bg.UNITES:
+        raise HTTPException(422, f"Unité inconnue : {unite}. Choisir parmi {', '.join(bg.UNITES)}.")
+    donnees_ou_erreur(ctx, symbole)
+    actif = ctx.univers[symbole]
+    total = barres + CHAUFFE                                  # bougies de « chauffe » pour que les indicateurs soient prêts
+    with acces_bac(ctx, u) as (_bac, t):
+        try:
+            if unite == "1j":
+                lues = [{**b, "t": int(bg.secondes(datetime.fromisoformat(b["date"])))} for b in ctx.moteur.historique(symbole, t, total)]
+            else:
+                duree = bg.duree_seance(actif.session_utc)
+                passees = ctx.magasin.barres_terminees(symbole, t.date(), n=bg.nb_seances_utiles(bg.UNITES[unite], total, duree))
+                jours = [d.date() for d in passees.index] + [t.date()]
+                lues = bg.bougies_intraday(ctx.moteur, symbole, jours, t, bg.UNITES[unite], total)
+        except DonneeIndisponible as exc:
+            raise HTTPException(409, str(exc)) from None
+    tout = calculer_tout(lues) if lues else {}
+    sortie = [{k: b[k] for k in ("t", "open", "high", "low", "close", "volume", "en_formation")} for b in lues[-barres:]]
+    return {
+        "symbole": symbole, "unite": unite, "intrajournalier": unite != "1j",
+        "pas_ticks_s": bg.duree_seance(actif.session_utc) / (ctx.moteur.nb_ticks - 1) if unite != "1j" else None,
+        "bougies": sortie, "indicateurs": {nom: v[-barres:] for nom, v in tout.items()}, "parametres": PARAMETRES,
+        "niveaux": _niveaux(sortie),
+    }
+
+
+def _niveaux(b: list[dict]) -> dict:
+    """Repères calculés sur les bougies affichées (sommets et creux confirmés seulement, voir analyse/niveaux.py)."""
+    sr = nv.supports_resistances(b)
+    return {"supports_resistances": [{k: v for k, v in x.items() if k != "dernier_indice"} for x in sr],
+            "cassures": nv.cassures(b, sr), "tendances": nv.lignes_tendance(b), "fibonacci": nv.fibonacci(b)}
 
 
 # ------------------------------------------------------------------ backtesting

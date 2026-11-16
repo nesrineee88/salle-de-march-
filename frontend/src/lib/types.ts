@@ -599,3 +599,34 @@ export interface PositionHistorique {
   motif_cloture: "manuelle" | "stop_loss" | "take_profit" | "stop_suiveur" | "achat_complementaire" | "regle" | null;
   nb_operations: number;
 }
+
+// ----------------------------------------------------------------------------- analyse technique : unités de temps, niveaux
+export type Unite = "1min" | "5min" | "15min" | "1h" | "1j";
+
+export interface Bougie {
+  t: number;                 // secondes UTC (début de la bougie)
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;     // null en intrajournalier : non disponible dans les données
+  en_formation: boolean;
+}
+
+export interface NiveauSR { niveau: number; type: "support" | "resistance"; touches: number; premier_t: number; dernier_t: number }
+export interface Cassure { niveau: number; sens: "haussiere" | "baissiere"; t: number; prix: number; bougies_depuis: number; variation_depuis: number | null }
+export interface Tendance { sens: "haussiere" | "baissiere"; t1: number; p1: number; t2: number; p2: number }
+export interface Fibonacci { sens: "haussier" | "baissier"; haut: number; bas: number; t_haut: number; t_bas: number; niveaux: { ratio: number; prix: number }[] }
+
+export interface ReponseBougies {
+  symbole: string;
+  unite: Unite;
+  intrajournalier: boolean;
+  pas_ticks_s: number | null;
+  bougies: Bougie[];
+  indicateurs: Record<string, (number | null)[]>;
+  parametres: Indicateurs["parametres"];
+  niveaux: { supports_resistances: NiveauSR[]; cassures: Cassure[]; tendances: Tendance[]; fibonacci: Fibonacci | null };
+}
+
+export type Dessin = { type: "horizontal"; prix: number } | { type: "tendance"; t1: number; p1: number; t2: number; p2: number };
