@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.risque import indicateurs as ind
+from app.risque import analyse, indicateurs as ind
 
 
 def courbe(rendements, dt_jours=1.0, depart=100.0):
@@ -101,6 +101,59 @@ def test_concentration_et_diversification():
     assert ind.score_diversification(1.0, 1) == 0
     assert ind.score_diversification(0.1, 3) == 90
     assert ind.score_diversification(0.5, 2) == 43
+
+
+def test_concentration_sectorielle_detecte_une_exposition_dangereuse():
+    positions = [
+        {"symbole": "A", "valeur": 4_500},
+        {"symbole": "B", "valeur": 4_500},
+        {"symbole": "C", "valeur": 1_000},
+    ]
+    catalogue = {"A": ("action", "Technologie"), "B": ("action", "Technologie"), "C": ("action", "Santé")}
+
+    c = analyse.concentration_portefeuille(positions, catalogue)
+
+    assert c["hhi_secteurs"] == pytest.approx(0.82)
+    assert c["nb_effectif_secteurs"] == pytest.approx(1 / 0.82)
+    assert c["plus_gros_secteur"] == {"secteur": "Technologie", "part": pytest.approx(0.9)}
+    assert c["niveau_secteurs"] == "concentre"
+    assert any(a["niveau"] == "danger" for a in c["alertes"])
+
+
+def test_simulation_choc_sectoriel_est_signee_et_ne_modifie_rien():
+    valo = {
+        "equity": 10_000,
+        "positions": [{"symbole": "A", "valeur": 9_000}],
+    }
+
+    resultat = analyse.simuler_choc_sectoriel(valo, {"A": ("action", "Technologie")}, "Technologie", -30)
+
+    assert resultat["perte_montant"] == pytest.approx(2_700)
+    assert resultat["variation_portefeuille_pct"] == pytest.approx(-27)
+    assert resultat["valeur_avant"] == pytest.approx(10_000)
+    assert resultat["valeur_apres"] == pytest.approx(7_300)
+    assert valo["equity"] == 10_000
+
+
+def test_repartition_detaillee_inclut_montant_et_pnl_latent():
+    valo = {
+        "equity": 10_000,
+        "cash": 8_900,
+        "positions": [{
+            "symbole": "A", "quantite": 10, "prix_moyen": 100,
+            "valeur": 1_100, "pnl_latent": 100,
+        }],
+    }
+
+    part = next(
+        p for p in analyse._repartition_detail(valo, {"A": ("action", "Technologie")}, "secteur")
+        if p["libelle"] == "Technologie"
+    )
+
+    assert part["valeur"] == pytest.approx(1_100)
+    assert part["part"] == pytest.approx(0.11)
+    assert part["pnl_latent"] == pytest.approx(100)
+    assert part["pnl_latent_pct"] == pytest.approx(0.10)
 
 
 def test_comparaison_au_profil_de_risque():

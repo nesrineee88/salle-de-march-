@@ -38,10 +38,29 @@ def test_analyse_avec_position_repartition_et_profil(client, utilisateur):
         assert sum(x["part"] for x in a["repartition"][cle]) == pytest.approx(1.0)         # liquidités comprises
     assert {x["libelle"] for x in a["repartition"]["position"]} == {"TST", "Liquidités"}
     assert a["concentration"]["hhi"] == pytest.approx(1.0) and a["diversification"] == {"score": 0, "nb_positions": 1, "nb_marches": 1}
+    position_detail = next(x for x in a["repartition_detail"]["position"] if x["libelle"] == "TST")
+    assert position_detail["valeur"] > 0 and position_detail["pnl_latent_pct"] is not None
+    assert a["concentration_detail"]["hhi"] == pytest.approx(1.0)
+    assert a["concentration_detail"]["plus_grosse_position"]["part"] == pytest.approx(1.0)
+    assert a["pistes_diversification"]
     assert a["risque"]["jours"] >= 30 and a["risque"]["cvar"] >= a["risque"]["var"] >= 0
     assert a["risque"]["var_montant"] == pytest.approx(a["risque"]["var"] * client.get("/api/v1/portefeuille", headers=u.h).json()["equity"])
     assert a["profil"]["statut"] in ("ok", "proche", "depasse") and a["profil"]["perte_tolerance"] == pytest.approx(0.10)
     assert a["correlations"] is None                                                         # une seule position
+
+
+def test_simuler_choc_sectoriel_ne_modifie_pas_le_portefeuille(client, utilisateur):
+    u = utilisateur()
+    aller(client, u, "2020-03-20T17:00:00")
+    assert acheter(client, u, 10)["statut"] == "execute"
+    avant = client.get("/api/v1/portefeuille", headers=u.h).json()
+    actif = next(a for a in client.get("/api/v1/actifs", headers=u.h).json() if a["symbole"] == "TST")
+
+    r = client.post("/api/v1/portefeuille/simuler-choc", json={"secteur": actif["secteur"], "choc_pct": -30}, headers=u.h)
+
+    assert r.status_code == 200
+    assert r.json()["valeur_avant"] == pytest.approx(avant["equity"])
+    assert client.get("/api/v1/portefeuille", headers=u.h).json() == avant
 
 
 def test_courbe_de_valeur_un_point_par_jour_simule_et_persistee(client, utilisateur, base_test):

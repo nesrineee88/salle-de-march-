@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { lienActif } from "@/lib/actif";
 import { dateHeure, montant, montantSigne, nombre, pct, pctSigne, prix, quantite } from "@/lib/format";
 import { useLecture } from "@/lib/hooks";
 import { LIBELLE_STATUT_REGLE, libelleRegle } from "@/lib/regles";
-import type { Analyse, HistoriqueValeur, Trade } from "@/lib/types";
-import Barres from "./Barres";
+import type { Analyse, HistoriqueValeur, Position, Trade } from "@/lib/types";
 import { useMarche } from "./Contexte";
 import Correlations from "./Correlations";
 import Courbe from "./Courbe";
+import { DonutRepartition, PerformancesPositions } from "./GraphiquesPortefeuille";
 import HistoriqueTransactions from "./HistoriqueTransactions";
 import Indicateur from "./Indicateur";
+import PanneauDiversification from "./PanneauDiversification";
 
 const STATUTS = {
   ok: { icone: "✓", titre: "Dans votre tolérance", classe: "jauge-ok" },
@@ -62,51 +64,46 @@ function ProfilVsRisque({ analyse }: { analyse: Analyse | null }) {
   );
 }
 
-const ONGLETS_REPARTITION = [
-  { cle: "marche", libelle: "Par marché" },
-  { cle: "secteur", libelle: "Par secteur" },
-  { cle: "position", libelle: "Par actif" },
-] as const;
-
 function Repartition({ analyse }: { analyse: Analyse | null }) {
-  const [cle, setCle] = useState<(typeof ONGLETS_REPARTITION)[number]["cle"]>("marche");
-  const { mode } = useMarche();
   if (!analyse) return <section className="panneau"><header className="panneau-tete"><h2>Répartition</h2></header><p className="vide">Chargement…</p></section>;
-  const d = analyse.diversification;
-  const c = analyse.concentration;
   return (
     <section className="panneau">
       <header className="panneau-tete"><h2>Répartition du portefeuille</h2></header>
-      <div className="onglets" role="tablist" aria-label="Type de répartition">
-        {ONGLETS_REPARTITION.map((o) => (
-          <button key={o.cle} role="tab" aria-selected={cle === o.cle} className="onglet" onClick={() => setCle(o.cle)}>{o.libelle}</button>
-        ))}
-      </div>
-      <div className="repartition-corps"><Barres parts={analyse.repartition[cle]} titre={`Répartition ${ONGLETS_REPARTITION.find((o) => o.cle === cle)!.libelle.toLowerCase()}`} /></div>
-      <dl className="mini-indicateurs">
-        <div>
-          <dt>Diversification</dt>
-          <dd>{d ? `${d.score} / 100` : "–"}</dd>
-          {mode === "apprenant" && <p className="aide">{d ? `${d.nb_positions} position(s) sur ${d.nb_marches} marché(s). Plus c'est réparti, plus la note monte.` : "S'affiche dès que vous détenez un actif."}</p>}
-        </div>
-        <div>
-          <dt>Plus grosse position</dt>
-          <dd>{c ? `${c.plus_grosse_position.symbole} · ${pct(c.plus_grosse_position.part, 0)}` : "–"}</dd>
-          {mode === "apprenant" && <p className="aide">{c ? `Comme si vous déteniez ${nombre(c.nb_effectif, 1)} actifs de taille égale.` : ""}</p>}
-        </div>
-      </dl>
+      {analyse.repartition_detail.position.every((l) => l.libelle === "Liquidités") &&
+        <p className="vide donut-etat-vide">Aucune position détenue. Achetez un actif pour voir la répartition des investissements.</p>}
+      <DonutRepartition donnees={analyse.repartition_detail} />
     </section>
   );
 }
 
 function Journal({ trades }: { trades: Trade[] | null }) {
-  const { pf, ordres, execs, annuler, regles, supprimerRegle } = useMarche();
+  const { pf, ordres, execs, annuler, envoyer, regles, supprimerRegle, actifs } = useMarche();
   const [onglet, setOnglet] = useState<"positions" | "trades" | "ordres" | "executions" | "regles">("positions");
+  const [fermeture, setFermeture] = useState<string | null>(null);
+  const [messageFermeture, setMessageFermeture] = useState<{ texte: string; classe: "message-ok" | "erreur" | "notes" } | null>(null);
   const origines = new Map(ordres.map((o) => [o.id, o.origine]));
   const actives = regles.filter((r) => r.statut === "active").length;
   const ouverts = ordres.filter((o) => o.statut === "en_attente" || o.statut === "partiel");
   const LIBELLE_STATUT: Record<string, string> = { en_attente: "En attente", partiel: "Partiel", execute: "Exécuté", annule: "Annulé", rejete: "Refusé" };
   const LIBELLE_TYPE: Record<string, string> = { marche: "Marché", limite: "Limite", stop: "Stop" };
+
+  async function cloturer(position: Position) {
+    if (!window.confirm(`Confirmer la vente au marché de ${quantite(position.quantite)} ${position.symbole} ?`)) return;
+    setFermeture(position.symbole);
+    setMessageFermeture(null);
+    try {
+      const ordre = await envoyer({ symbole: position.symbole, sens: "vente", quantite: position.quantite, type: "marche" });
+      if (ordre.statut === "execute") setMessageFermeture({ classe: "message-ok", texte: `Vente exécutée : ${quantite(ordre.quantite_executee)} ${position.symbole}.` });
+      else if (ordre.statut === "partiel") setMessageFermeture({ classe: "erreur", texte: `Vente partielle : ${quantite(ordre.quantite_executee)} ${position.symbole} exécutés.` });
+      else if (ordre.statut === "rejete") setMessageFermeture({ classe: "erreur", texte: `Ordre refusé : ${ordre.motif ?? "motif indisponible"}.` });
+      else setMessageFermeture({ classe: ordre.statut === "annule" ? "erreur" : "notes", texte: `Ordre de vente ${ordre.statut === "annule" ? "annulé" : "en attente"} pour ${position.symbole}.` });
+    } catch (e) {
+      setMessageFermeture({ classe: "erreur", texte: e instanceof Error ? e.message : "La vente n’a pas pu être envoyée." });
+    } finally {
+      setFermeture(null);
+    }
+  }
+
   return (
     <section className="panneau panneau-tableau">
       <div className="onglets" role="tablist" aria-label="Détail du portefeuille">
@@ -119,21 +116,29 @@ function Journal({ trades }: { trades: Trade[] | null }) {
       <div className="tableau-defile" role="tabpanel">
         {onglet === "positions" && (pf && pf.positions.length > 0 ? (
           <table className="tableau">
-            <thead><tr><th>Actif</th><th>Quantité</th><th>Prix moyen</th><th>Prix actuel</th><th>Valeur</th><th>Gain ou perte latent</th><th>Rendement</th><th>Poids</th></tr></thead>
+            <thead><tr><th>Actif</th><th>Quantité</th><th>Prix moyen</th><th>Prix actuel</th><th>Valeur</th><th>Gain ou perte latent</th><th>Rendement</th><th>Poids</th><th>Actions</th></tr></thead>
             <tbody>
               {pf.positions.map((p) => {
                 const r = p.prix_moyen ? p.prix_marche / p.prix_moyen - 1 : null;
+                const actif = actifs.find((a) => a.symbole === p.symbole);
                 return (
                   <tr key={p.symbole}>
                     <td>{p.symbole}</td><td>{quantite(p.quantite)}</td><td>{prix(p.prix_moyen)}</td><td>{prix(p.prix_marche)}</td><td>{montant(p.valeur)}</td>
                     <td className={ton(p.pnl_latent)}>{fleche(p.pnl_latent)}{montantSigne(p.pnl_latent)}</td>
                     <td className={r !== null ? ton(r) : undefined}>{r !== null ? `${fleche(r)}${pctSigne(r)}` : "–"}</td><td>{pct(p.poids)}</td>
+                    <td className="actions-position">
+                      <button type="button" className="btn btn-danger btn-auto" disabled={fermeture !== null} onClick={() => void cloturer(p)}>
+                        {fermeture === p.symbole ? "Envoi…" : "Clôturer"}
+                      </button>
+                      {actif && <Link className="lien-discret" href={lienActif(actif)}>Règles SL/TP</Link>}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        ) : <p className="vide">Aucune position. Ouvrez un marché pour passer un premier ordre.</p>)}
+        ) : <p className="vide">Aucune position. <Link href="/actions">Ouvrez un marché</Link> pour passer un premier ordre.</p>)}
+        {onglet === "positions" && messageFermeture && <p className={messageFermeture.classe} role="status">{messageFermeture.texte}</p>}
 
         {onglet === "trades" && (trades && trades.length > 0 ? (
           <table className="tableau">
@@ -209,8 +214,9 @@ export default function PagePortefeuille() {
       <section className="kpis" aria-label="Résumé">
         <Indicateur grand libelle="Valeur du portefeuille" valeur={pf ? montant(pf.equity) : "–"} detail={pf ? `Capital de départ : ${montant(pf.capital_initial)}` : undefined}
           explication="Liquidités plus valeur de toutes vos positions au prix actuel." />
-        <Indicateur libelle="Gain ou perte total" valeur={pf ? `${fleche(pf.pnl_total)}${montantSigne(pf.pnl_total)}` : "–"} ton={pf ? ton(pf.pnl_total) : undefined} detail={rendement !== null ? pctSigne(rendement) : undefined}
-          explication="Valeur actuelle moins capital de départ." />
+        <Indicateur libelle="Performance" valeur={rendement !== null ? pctSigne(rendement) : "–"} ton={rendement !== null ? ton(rendement) : undefined}
+          detail={pf ? `Résultat total : ${montantSigne(pf.pnl_total)}` : undefined}
+          explication="Évolution de la valeur totale par rapport au capital initial." />
         <Indicateur libelle="Réalisé" valeur={pf ? `${fleche(pf.pnl_realise)}${montantSigne(pf.pnl_realise)}` : "–"} ton={pf ? ton(pf.pnl_realise) : undefined}
           explication="Gains et pertes déjà encaissés par vos ventes." />
         <Indicateur libelle="Latent" valeur={pf ? `${fleche(pf.pnl_latent)}${montantSigne(pf.pnl_latent)}` : "–"} ton={pf ? ton(pf.pnl_latent) : undefined}
@@ -258,6 +264,14 @@ export default function PagePortefeuille() {
 
       <div className="grille-2">
         <Repartition analyse={analyse} />
+        <section className="panneau">
+          <header className="panneau-tete"><h2>Performance par position</h2></header>
+          <PerformancesPositions lignes={analyse?.repartition_detail.position ?? []} />
+        </section>
+      </div>
+
+      <div className="grille-2">
+        <PanneauDiversification analyse={analyse} />
         <section className="panneau">
           <header className="panneau-tete"><h2>Corrélations entre vos actifs</h2></header>
           {analyse?.correlations ? (

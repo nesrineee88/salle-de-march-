@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from .contexte import Contexte, acces_bac, obtenir_contexte
-from .risque.analyse import analyser
+from .risque.analyse import analyser, simuler_choc_sectoriel
 from .trading.salle import ordre_en_dict
 from .utilisateurs.modeles import Utilisateur
 from .utilisateurs.routes import exiger, publique, utilisateur_courant
@@ -14,6 +15,11 @@ from .utilisateurs.routes import exiger, publique, utilisateur_courant
 routeur = APIRouter(prefix="/api/v1")
 BENCHMARK = "^GSPC"
 FENETRE_RISQUE_JOURS = 260
+
+
+class CorpsChocSectoriel(BaseModel):
+    secteur: str = Field(min_length=1, max_length=100)
+    choc_pct: float = Field(ge=-100, le=300, allow_inf_nan=False)
 
 
 @routeur.get("/portefeuille/analyse")
@@ -24,6 +30,18 @@ def analyse(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(
                   for p in valo["positions"] if ctx.magasin.a_des_donnees(p["symbole"])}
         catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
         return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque)
+
+
+@routeur.post("/portefeuille/simuler-choc")
+def simuler_choc(corps: CorpsChocSectoriel, ctx: Contexte = Depends(obtenir_contexte),
+                 u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
+    secteurs = {a.secteur for a in ctx.univers if a.tradable}
+    if corps.secteur not in secteurs:
+        raise HTTPException(422, f"Secteur inconnu : {corps.secteur}.")
+    catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
+    with acces_bac(ctx, u) as (bac, t):
+        valo = bac.salle.valorisation(bac.compte_id, t)
+        return simuler_choc_sectoriel(valo, catalogue, corps.secteur, corps.choc_pct)
 
 
 @routeur.get("/portefeuille/historique")
