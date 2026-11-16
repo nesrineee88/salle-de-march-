@@ -1,6 +1,7 @@
-"""Règles automatiques sur prix PLATS (le prix est constant sur chaque séance) : chaque déclenchement se vérifie à la main."""
+"""Règles automatiques sur prix plats et bougies OHLC synthétiques."""
 from datetime import date
 
+import pandas as pd
 import pytest
 
 from app.trading.modeles import ACHAT, ANNULE, EXECUTE, LIMITE, VENTE
@@ -16,6 +17,28 @@ def salle_avec(prix_par_jour, quantite=100):
     s.ouvrir_compte("c", 100_000.0)
     if quantite:
         assert s.passer_ordre("c", "TST", ACHAT, quantite, a(LUN)).statut == EXECUTE
+    return s
+
+
+def serie_ohlc(bougies):
+    index = pd.DatetimeIndex([pd.Timestamp(j) for j, *_ in bougies], name="date")
+    return pd.DataFrame(
+        {
+            "open": [o for _, o, _, _, _ in bougies],
+            "high": [h for _, _, h, _, _ in bougies],
+            "low": [b for _, _, _, b, _ in bougies],
+            "close": [c for _, _, _, _, c in bougies],
+            "volume": 1000.0,
+            "corrige": False,
+        },
+        index=index,
+    )
+
+
+def salle_avec_ohlc(bougies):
+    s, _ = construire({"TST": serie_ohlc(bougies)})
+    s.ouvrir_compte("c", 100_000.0)
+    assert s.passer_ordre("c", "TST", ACHAT, 100, a(LUN, 17, 2)).statut == EXECUTE
     return s
 
 
@@ -44,6 +67,32 @@ def test_stop_loss_sur_un_gap_s_execute_au_prix_du_marche_pas_au_prix_du_seuil()
     s.avancer(a(MAR))
     (ordre,) = ordres_de_regles(s)
     assert ordre.prix_moyen == pytest.approx(50.0, rel=1e-3) and ordre.prix_moyen < 60
+
+
+def test_stop_loss_gap_execute_au_prix_de_l_ouverture():
+    bougies = [(LUN, 200.0, 200.0, 200.0, 200.0), (MAR, 120.0, 130.0, 110.0, 120.0)]
+    s = salle_avec_ohlc(bougies)
+    s.poser_regle("c", "TST", "stop_loss", -0.30, 1.0, a(LUN, 17, 2))
+    s.avancer(a(MAR, 17, 2))
+    (ordre_auto,) = ordres_de_regles(s)
+
+    reference = salle_avec_ohlc(bougies)
+    ordre_marche = reference.passer_ordre("c", "TST", VENTE, 100, a(MAR, 14, 30))
+    assert ordre_auto.prix_moyen == pytest.approx(ordre_marche.prix_moyen, rel=1e-7)
+
+
+def test_stop_loss_franchissement_intraperiode_execute_au_seuil():
+    bougies = [(LUN, 200.0, 200.0, 200.0, 200.0), (MAR, 200.0, 220.0, 100.0, 100.0)]
+    s = salle_avec_ohlc(bougies)
+    pos = s.compte("c").positions["TST"]
+    niveau = pos.prix_moyen * 0.70
+    s.poser_regle("c", "TST", "stop_loss", -0.30, 1.0, a(LUN, 17, 2))
+    s.avancer(a(MAR, 21))
+    (ordre_auto,) = ordres_de_regles(s)
+
+    reference = salle_avec_ohlc([(LUN, 200.0, 200.0, 200.0, 200.0), (MAR, niveau, niveau, niveau, niveau)])
+    ordre_marche = reference.passer_ordre("c", "TST", VENTE, 100, a(MAR, 21))
+    assert ordre_auto.prix_moyen == pytest.approx(ordre_marche.prix_moyen, rel=1e-7)
 
 
 def test_la_regle_attend_l_ouverture_du_marche():
@@ -76,6 +125,32 @@ def test_prise_de_profit_partielle_et_le_stop_loss_reste_actif():
     assert sl.active                                                         # il reste de quoi protéger
     (ordre,) = ordres_de_regles(s)
     assert ordre.quantite == pytest.approx(50.0) and ordre.prix_moyen == pytest.approx(160 * (1 - 0.00025), rel=1e-4)
+
+
+def test_take_profit_gap_execute_au_prix_de_l_ouverture():
+    bougies = [(LUN, 200.0, 200.0, 200.0, 200.0), (MAR, 260.0, 270.0, 250.0, 260.0)]
+    s = salle_avec_ohlc(bougies)
+    s.poser_regle("c", "TST", "take_profit", 0.20, 1.0, a(LUN, 17, 2))
+    s.avancer(a(MAR, 17, 2))
+    (ordre_auto,) = ordres_de_regles(s)
+
+    reference = salle_avec_ohlc(bougies)
+    ordre_marche = reference.passer_ordre("c", "TST", VENTE, 100, a(MAR, 14, 30))
+    assert ordre_auto.prix_moyen == pytest.approx(ordre_marche.prix_moyen, rel=1e-7)
+
+
+def test_take_profit_franchissement_intraperiode_execute_au_seuil():
+    bougies = [(LUN, 200.0, 200.0, 200.0, 200.0), (MAR, 200.0, 300.0, 200.0, 300.0)]
+    s = salle_avec_ohlc(bougies)
+    pos = s.compte("c").positions["TST"]
+    niveau = pos.prix_moyen * 1.20
+    s.poser_regle("c", "TST", "take_profit", 0.20, 1.0, a(LUN, 17, 2))
+    s.avancer(a(MAR, 21))
+    (ordre_auto,) = ordres_de_regles(s)
+
+    reference = salle_avec_ohlc([(LUN, 200.0, 200.0, 200.0, 200.0), (MAR, niveau, niveau, niveau, niveau)])
+    ordre_marche = reference.passer_ordre("c", "TST", VENTE, 100, a(MAR, 21))
+    assert ordre_auto.prix_moyen == pytest.approx(ordre_marche.prix_moyen, rel=1e-7)
 
 
 def test_oco_quand_une_regle_solde_la_position_les_autres_sont_annulees():

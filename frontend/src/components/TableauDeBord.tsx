@@ -5,10 +5,12 @@ import { useMemo } from "react";
 import { dateCourte, montant, montantSigne, pct, pctSigne, prix, variation } from "@/lib/format";
 import { useLecture } from "@/lib/hooks";
 import { REPERES } from "@/lib/reperes";
-import type { Actif, Classe, CotationLigne, HistoriqueValeur } from "@/lib/types";
+import type { Actif, Classe, CotationLigne, HistoriqueValeur, SyntheseTableau } from "@/lib/types";
 import { useMarche } from "./Contexte";
 import Courbe from "./Courbe";
+import { DonutRepartition } from "./GraphiquesPortefeuille";
 import Indicateur from "./Indicateur";
+import { ActiviteRecente, ActualitesImportantes, PanneauAlertes, PanneauRisque } from "./SyntheseTableau";
 
 const MARCHES: { classe: Classe; titre: string; href: string }[] = [
   { classe: "action", titre: "Actions", href: "/actions" },
@@ -48,8 +50,11 @@ function Mouvements({ titre, href, lignes }: { titre: string; href: string; lign
 }
 
 export default function TableauDeBord() {
-  const { utilisateur, inst, actifs, pf, execs, ordres, aller, mode } = useMarche();
+  const { utilisateur, inst, actifs, pf, execs, ordres, aller, mode, setMode } = useMarche();
   const { donnees: hist } = useLecture<HistoriqueValeur>("/api/v1/portefeuille/historique", 6000);
+  // Synthèse calculée côté serveur (niveau de risque, alertes, répartition) : relue toutes les 6 s, jamais recalculée à chaque tick.
+  const { donnees: synthese, erreur: erreurSynthese } = useLecture<SyntheseTableau>("/api/v1/tableau-de-bord", 6000);
+  const pro = mode === "trader";
 
   const parClasse = useMemo(() => {
     const parSymbole = new Map(actifs.map((a) => [a.symbole, a]));
@@ -75,7 +80,11 @@ export default function TableauDeBord() {
       <header className="page-tete">
         <div>
           <h1>Bonjour {utilisateur.nom}</h1>
-          <p className="aide">Votre vue d&apos;ensemble : la valeur de votre portefeuille, les marchés du jour et ce qu&apos;il reste à faire.</p>
+          <p className="aide">Votre vue d&apos;ensemble : la valeur de votre portefeuille, son niveau de risque, vos alertes et les marchés du jour.</p>
+        </div>
+        <div className="choix-vue" role="group" aria-label="Choix de la vue du tableau de bord">
+          <button type="button" aria-pressed={!pro} onClick={() => setMode("apprenant")}>Vue simple</button>
+          <button type="button" aria-pressed={pro} onClick={() => setMode("trader")}>Vue professionnelle</button>
         </div>
       </header>
 
@@ -112,6 +121,15 @@ export default function TableauDeBord() {
       </section>
 
       <div className="grille-2">
+        <PanneauRisque synthese={synthese} erreur={erreurSynthese} mode={mode} />
+        <section className="panneau" aria-labelledby="titre-repartition-tableau">
+          <header className="panneau-tete"><h2 id="titre-repartition-tableau">Répartition</h2><Link href="/portefeuille" className="lien-discret">Diversification →</Link></header>
+          {synthese ? <DonutRepartition donnees={synthese.repartition_detail} /> : <p className="chargement">Chargement…</p>}
+          {!pro && <p className="aide">Survolez une part pour voir sa valeur. Un portefeuille réparti sur plusieurs secteurs et classes d&apos;actifs souffre moins d&apos;une crise touchant un seul secteur.</p>}
+        </section>
+      </div>
+
+      <div className="grille-2">
         <section className="panneau">
           <header className="panneau-tete"><h2>Valeur du portefeuille</h2><Link href="/portefeuille" className="lien-discret">Analyse complète →</Link></header>
           {hist ? <Courbe points={hist.points} capitalInitial={hist.capital_initial} nomReference="S&P 500" hauteur={230} tableau={false} /> : <p className="vide">Chargement…</p>}
@@ -135,11 +153,19 @@ export default function TableauDeBord() {
         </section>
       </div>
 
-      <div className="grille-3">
-        {MARCHES.map((m) => <Mouvements key={m.classe} titre={m.titre} href={m.href} lignes={parClasse[m.classe] ?? []} />)}
+      <div className="grille-2">
+        <PanneauAlertes synthese={synthese} mode={mode} />
+        <ActualitesImportantes />
       </div>
 
+      {pro && (
+        <div className="grille-3">
+          {MARCHES.map((m) => <Mouvements key={m.classe} titre={m.titre} href={m.href} lignes={parClasse[m.classe] ?? []} />)}
+        </div>
+      )}
+
       <div className="grille-2">
+        {pro ? (
         <section className="panneau">
           <header className="panneau-tete"><h2>Mes plus grosses positions</h2><Link href="/portefeuille" className="lien-discret">Tout voir →</Link></header>
           {top.length === 0 ? <p className="vide">Aucune position pour le moment.</p> : (
@@ -157,6 +183,7 @@ export default function TableauDeBord() {
             </table>
           )}
         </section>
+        ) : <ActiviteRecente execs={execs} synthese={synthese} />}
 
         <section className="panneau">
           <header className="panneau-tete"><h2>Machine à remonter le temps</h2></header>
@@ -171,6 +198,7 @@ export default function TableauDeBord() {
           </ul>
         </section>
       </div>
+      {pro && <ActiviteRecente execs={execs} synthese={synthese} />}
     </main>
   );
 }

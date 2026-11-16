@@ -193,6 +193,12 @@ export interface PartRepartition {
   part: number;
 }
 
+export interface PartRepartitionDetail extends PartRepartition {
+  valeur: number;
+  pnl_latent: number;
+  pnl_latent_pct: number | null;
+}
+
 export interface Analyse {
   instant: string;
   performance: {
@@ -205,10 +211,32 @@ export interface Analyse {
     sharpe: number | null;
     sortino: number | null;
   };
-  risque: { var: number; cvar: number; jours: number; niveau: number; var_montant: number; cvar_montant: number } | null;
+  risque: {
+    var: number; cvar: number; jours: number; niveau: number; var_montant: number; cvar_montant: number;
+    ecart_type_jour: number | null;               // écart-type d'échantillon des rendements de séance
+    volatilite_annuelle_seances: number | null;   // écart-type × √252
+    distribution: Distribution | null;
+  } | null;
+  beta: Beta | null;
+  covariances: { symboles: string[]; matrice: number[][] } | null;
   concentration: { hhi: number; nb_effectif: number; plus_grosse_position: { symbole: string; part: number } } | null;
   diversification: { score: number; nb_positions: number; nb_marches: number } | null;
   repartition: { marche: PartRepartition[]; secteur: PartRepartition[]; position: PartRepartition[] };
+  repartition_detail: { marche: PartRepartitionDetail[]; secteur: PartRepartitionDetail[]; position: PartRepartitionDetail[] };
+  concentration_detail: {
+    positions: { symbole: string; part: number }[];
+    secteurs: { secteur: string; part: number }[];
+    hhi: number;
+    nb_effectif: number;
+    niveau: "diversifie" | "modere" | "concentre";
+    hhi_secteurs: number;
+    nb_effectif_secteurs: number;
+    niveau_secteurs: "diversifie" | "modere" | "concentre";
+    plus_grosse_position: { symbole: string; part: number };
+    plus_gros_secteur: { secteur: string; part: number };
+    alertes: { niveau: "attention" | "danger"; texte: string }[];
+  } | null;
+  pistes_diversification: string[];
   correlations: { symboles: string[]; matrice: number[][] } | null;
   profil: {
     statut: "profil_absent" | "ok" | "proche" | "depasse";
@@ -220,6 +248,16 @@ export interface Analyse {
     var_sur_tolerance?: number | null;
   };
   avertissements: string[];
+}
+
+export interface ResultatChocSectoriel {
+  secteur: string;
+  choc_pct: number;
+  valeur_secteur: number;
+  perte_montant: number;
+  variation_portefeuille_pct: number;
+  valeur_avant: number;
+  valeur_apres: number;
 }
 
 export interface SessionAppareil {
@@ -494,3 +532,70 @@ export interface StatsAdmin {
     duree_jeton_acces_minutes: number; duree_session_jours: number; echecs_avant_verrouillage: number; note: string };
 }
 export interface PerformanceAdmin { id: number; nom: string; email: string; role: string; actif: boolean; profil_risque: string | null; portefeuille: { rendement: number; drawdown: number; score: number; date_simulee: string; points: number; valeur: number } | null }
+
+// ----------------------------------------------------------------------------- tableau de bord (synthèse serveur)
+export type NiveauRisque = "aucun" | "faible" | "modere" | "eleve";
+export type CritereRisque =
+  | { critere: "var" | "baisse"; rang: 0 | 1 | 2; valeur: number }
+  | { critere: "concentration_position" | "concentration_secteur"; rang: 0 | 1 | 2; valeur: number; libelle: string }
+  | { critere: "profil"; rang: 0 | 1 | 2; valeur: number | null; tolerance: number | null };
+
+export interface AlerteRegle {
+  id: number;
+  symbole: string;
+  type: "stop_loss" | "take_profit" | "stop_suiveur";
+  niveau: number;
+  prix: number;
+  distance: number;              // |seuil − prix| / |prix|
+  proche: boolean;
+}
+
+export interface RegleDeclenchee {
+  id: number;
+  symbole: string;
+  type: TypeRegle;
+  statut: "declenchee" | "echec";
+  declenchee_le: string;
+  motif: string | null;
+}
+
+export interface SyntheseTableau {
+  instant: string;
+  niveau_risque: { niveau: NiveauRisque; criteres: CritereRisque[]; part_investie: number };
+  alertes: { surveillance: AlerteRegle[]; declenchees: RegleDeclenchee[] };
+  repartition_detail: Analyse["repartition_detail"];
+  risque: Analyse["risque"];
+  performance: Analyse["performance"];
+}
+
+// ----------------------------------------------------------------------------- mesures de risque (section 5)
+export interface Distribution { bornes: number[]; effectifs: number[] }
+
+export interface Beta {
+  beta: number;
+  alpha_jour: number;
+  covariance: number;
+  variance_marche: number;
+  correlation: number | null;
+  jours: number;
+  indice: string;
+  points: [number, number][];        // (rendement de l'indice, rendement du portefeuille) par séance
+}
+
+// ----------------------------------------------------------------------------- historique des positions (ouverture → clôture)
+export interface PositionHistorique {
+  symbole: string;
+  statut: "ouverte" | "cloturee";
+  ouverte_le: string;
+  cloturee_le: string | null;
+  quantite_max: number;
+  quantite_restante: number;
+  prix_achat_moyen: number | null;
+  prix_vente_moyen: number | null;
+  pnl_realise: number;
+  frais: number;
+  resultat_net: number;            // réalisé − frais du cycle
+  rendement_net: number | null;    // résultat net / coût des achats
+  motif_cloture: "manuelle" | "stop_loss" | "take_profit" | "stop_suiveur" | "achat_complementaire" | "regle" | null;
+  nb_operations: number;
+}

@@ -3,11 +3,15 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from .contexte import Contexte, acces_bac, obtenir_contexte
-from .risque.analyse import analyser
-from .trading.salle import ordre_en_dict
+from .risque.analyse import analyser, simuler_choc_sectoriel
+from .risque.synthese import alertes_regles, niveau_risque
+from .routes_regles import _niveau as niveau_regle
+from .trading.historique import historique_positions
+from .trading.salle import ordre_en_dict, regle_en_dict
 from .utilisateurs.modeles import Utilisateur
 from .utilisateurs.routes import exiger, publique, utilisateur_courant
 
@@ -16,14 +20,55 @@ BENCHMARK = "^GSPC"
 FENETRE_RISQUE_JOURS = 260
 
 
+class CorpsChocSectoriel(BaseModel):
+    secteur: str = Field(min_length=1, max_length=100)
+    choc_pct: float = Field(ge=-100, le=300, allow_inf_nan=False)
+
+
+def _analyser_bac(ctx: Contexte, bac, t, u: Utilisateur) -> dict:
+    """Analyse du portefeuille à l'instant simulé t (à appeler sous le verrou du bac)."""
+    valo = bac.salle.valorisation(bac.compte_id, t)
+    series = {p["symbole"]: ctx.magasin.barres_terminees(p["symbole"], t.date(), n=FENETRE_RISQUE_JOURS)["close"]
+              for p in valo["positions"] if ctx.magasin.a_des_donnees(p["symbole"])}
+    catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
+    reference = (ctx.magasin.barres_terminees(BENCHMARK, t.date(), n=FENETRE_RISQUE_JOURS)["close"]
+                 if ctx.magasin.a_des_donnees(BENCHMARK) else None)        # séances terminées : jamais le futur
+    return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque, benchmark=reference)
+
+
 @routeur.get("/portefeuille/analyse")
 def analyse(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     with acces_bac(ctx, u) as (bac, t):
+        return _analyser_bac(ctx, bac, t, u)
+
+
+@routeur.get("/tableau-de-bord")
+def tableau_de_bord(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
+    """Synthèse calculée côté serveur pour le tableau de bord : niveau de risque, alertes des règles, répartition."""
+    with acces_bac(ctx, u) as (bac, t):
+        a = _analyser_bac(ctx, bac, t, u)
         valo = bac.salle.valorisation(bac.compte_id, t)
-        series = {p["symbole"]: ctx.magasin.barres_terminees(p["symbole"], t.date(), n=FENETRE_RISQUE_JOURS)["close"]
-                  for p in valo["positions"] if ctx.magasin.a_des_donnees(p["symbole"])}
-        catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
-        return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque)
+        positions = {p["symbole"]: p for p in valo["positions"]}
+        regles = []
+        for r in bac.salle.compte(bac.compte_id).regles.values():
+            d = regle_en_dict(r)
+            d["niveau"] = niveau_regle(d, positions.get(r.symbole))
+            regles.append(d)
+    prix = {s: p["prix_marche"] for s, p in positions.items()}
+    return {"instant": a["instant"], "niveau_risque": niveau_risque(a), "alertes": alertes_regles(regles, prix),
+            "repartition_detail": a["repartition_detail"], "risque": a["risque"], "performance": a["performance"]}
+
+
+@routeur.post("/portefeuille/simuler-choc")
+def simuler_choc(corps: CorpsChocSectoriel, ctx: Contexte = Depends(obtenir_contexte),
+                 u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
+    secteurs = {a.secteur for a in ctx.univers if a.tradable}
+    if corps.secteur not in secteurs:
+        raise HTTPException(422, f"Secteur inconnu : {corps.secteur}.")
+    catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
+    with acces_bac(ctx, u) as (bac, t):
+        valo = bac.salle.valorisation(bac.compte_id, t)
+        return simuler_choc_sectoriel(valo, catalogue, corps.secteur, corps.choc_pct)
 
 
 @routeur.get("/portefeuille/historique")
@@ -59,6 +104,19 @@ def trades_clotures(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = 
                        "prix_achat_moyen": prix_achat, "prix_vente": e.prix, "pnl": pnl, "frais": e.frais,
                        "rendement": (e.prix / prix_achat - 1) if prix_achat else None})
     return sortie
+
+
+@routeur.get("/portefeuille/positions/historique")
+def historique_des_positions(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
+    """Chaque position, de son ouverture à sa clôture : une position clôturée reste dans l'historique."""
+    with acces_bac(ctx, u) as (bac, _t):
+        compte = bac.salle.compte(bac.compte_id)
+        executions = [{"ordre_id": e.ordre_id, "symbole": e.symbole, "sens": e.sens, "quantite": e.quantite, "prix": e.prix,
+                       "frais": e.frais, "instant": e.instant.isoformat(timespec="seconds"), "pnl": e.pnl}
+                      for e in compte.executions]
+        origines = {o.id: o.origine for o in compte.ordres.values()}
+        types_regles = {r.id: r.type for r in compte.regles.values()}
+    return historique_positions(executions, origines, types_regles)
 
 
 @routeur.get("/moi/export")

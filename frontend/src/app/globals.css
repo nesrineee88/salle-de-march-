@@ -393,6 +393,53 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .barre-neutre { background: var(--ref); }
 .barre-valeur { text-align: right; }
 .repartition-corps { padding-top: 0.6rem; }
+.donut-repartition { padding-top: 0.35rem; }
+.donut-corps { display: grid; grid-template-columns: minmax(10rem, 0.8fr) minmax(0, 1.2fr); align-items: center; gap: 1rem; }
+.donut-visuel { width: min(100%, 17rem); justify-self: center; }
+.donut-visuel svg { display: block; width: 100%; overflow: visible; }
+.donut-centre-nom { fill: var(--discret); font: 4px var(--police); }
+.donut-centre-valeur { fill: var(--texte); font: 5px var(--police-titre); font-weight: 600; }
+.donut-legende { display: grid; gap: 0.2rem; list-style: none; padding: 0; margin: 0; max-height: 18rem; overflow: auto; }
+.donut-legende-ligne { display: grid; grid-template-columns: 0.7rem minmax(4rem, 1fr) auto; align-items: center; gap: 0.5rem; width: 100%; padding: 0.35rem; border: 0; border-radius: 4px; background: transparent; color: var(--texte); text-align: left; cursor: pointer; }
+.donut-legende-ligne:hover, .donut-legende-ligne[aria-pressed="true"] { background: var(--nuit-3); }
+.donut-pastille { width: 0.65rem; height: 0.65rem; border-radius: 50%; }
+.donut-libelle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.donut-chiffres { color: var(--discret); font-size: 0.8125rem; text-align: right; }
+.donut-pnl { margin-top: 0.7rem; font-size: 0.875rem; }
+.donut-etat-vide { margin: 0.5rem 0; }
+.performances-positions { display: grid; gap: 0.65rem; }
+.performance-position { display: grid; grid-template-columns: minmax(4rem, 7rem) minmax(4rem, 1fr) 4rem 5rem; align-items: center; gap: 0.65rem; font-size: 0.875rem; }
+.performance-position strong { overflow: hidden; text-overflow: ellipsis; }
+.performance-position > span, .performance-position > small { text-align: right; }
+.performance-piste { position: relative; height: 0.8rem; border-radius: 99px; background: var(--nuit-3); }
+.performance-zero { position: absolute; left: 50%; top: -0.15rem; bottom: -0.15rem; width: 1px; background: var(--trait-fort); }
+.performance-barre { position: absolute; top: 0; height: 100%; border-radius: 99px; }
+.performance-barre.gain { background: var(--gain); }
+.performance-barre.perte { background: var(--perte); }
+.diversification-indicateurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.diversification-indicateurs > div { display: grid; gap: 0.15rem; padding: 0.5rem 0.6rem; border: 1px solid var(--trait); border-radius: 6px; min-width: 0; }
+.diversification-indicateurs span { color: var(--discret); font-size: 0.75rem; }
+.diversification-indicateurs strong { overflow-wrap: anywhere; font-size: 0.95rem; }
+.diversification-niveau { margin-top: 0.75rem; font-weight: 600; }
+.badge-hhi { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.8rem; text-transform: capitalize; }
+.badge-hhi-diversifie { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.badge-hhi-modere { background: color-mix(in srgb, var(--alerte) 18%, transparent); color: var(--alerte); }
+.badge-hhi-concentre { background: color-mix(in srgb, var(--perte) 18%, transparent); color: var(--perte); }
+.alertes-concentration, .pistes-diversification ul { display: grid; gap: 0.35rem; padding-left: 1.2rem; margin-top: 0.5rem; }
+.alerte-concentration-attention { color: var(--alerte); }
+.alerte-concentration-danger { color: var(--perte); font-weight: 600; }
+.pistes-diversification, .simulateur-choc { border-top: 1px solid var(--trait); margin-top: 0.9rem; padding-top: 0.8rem; }
+.pistes-diversification h3, .simulateur-choc h3 { font-size: 0.92rem; }
+.simulateur-choc form { display: grid; gap: 0.4rem; margin-top: 0.6rem; }
+.simulateur-choc select { width: 100%; }
+.simulateur-choc input[type="range"] { width: 100%; accent-color: var(--accent); }
+.simulateur-choc .btn { justify-self: start; margin-top: 0.25rem; }
+.resultat-choc { margin-top: 0.75rem; padding: 0.65rem; border-radius: 6px; background: var(--nuit); }
+.resultat-choc dl > div { display: flex; justify-content: space-between; gap: 1rem; padding-top: 0.3rem; }
+.resultat-choc dt { color: var(--discret); }
+.actions-position { min-width: 8rem; }
+.actions-position .btn { margin-bottom: 0.25rem; }
+.actions-position .lien-discret { display: block; }
 .mini-indicateurs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 0.9rem; padding-top: 0.8rem; border-top: 1px solid var(--trait); }
 .mini-indicateurs dt { color: var(--discret); font-size: 0.8125rem; }
 .mini-indicateurs dd { font-family: var(--police-titre); font-weight: 600; font-size: 1.15rem; }
@@ -473,6 +520,10 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 }
 @media (max-width: 600px) {
   .kpis-risque { grid-template-columns: 1fr; }
+  .donut-corps { grid-template-columns: 1fr; }
+  .donut-visuel { max-width: 14rem; }
+  .performance-position { grid-template-columns: minmax(3.5rem, 5rem) minmax(3rem, 1fr) 3.5rem; }
+  .performance-position small { grid-column: 3; }
 }
 @media (max-width: 900px) {
   .auth { grid-template-columns: 1fr; }
@@ -1108,3 +1159,120 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .entete-droite { gap: 0.5rem; }
 @media (prefers-reduced-motion: reduce) { .btn-rond, .btn-rond::after { transition: none; } }
 
+
+/* ---------- tableau de bord : niveau de risque, alertes des règles, vues simple et professionnelle ---------- */
+.page-tete:has(.choix-vue) { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem 1.5rem; }
+.choix-vue { display: inline-flex; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 2px; gap: 2px; }
+.choix-vue button { background: none; border: 0; border-radius: 999px; padding: 0.3rem 0.85rem; color: var(--discret); font-size: 0.8125rem; }
+.choix-vue button:hover { color: var(--texte); }
+.choix-vue button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); font-weight: 600; }
+.choix-vue button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.niveau-risque { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; list-style: none; padding: 0; margin: 0.3rem 0 0.7rem; }
+.niveau-risque li { text-align: center; font-size: 0.8125rem; padding: 0.4rem 0.2rem; border-radius: 6px; background: var(--surface-3); color: var(--discret); transition: background-color 0.3s ease, color 0.3s ease; }
+.niveau-risque li[data-actif="true"] { font-weight: 700; color: var(--sur-couleur); }
+.niveau-risque li[data-actif="true"][data-niveau="faible"] { background: var(--ok); }
+.niveau-risque li[data-actif="true"][data-niveau="modere"] { background: var(--alerte); }
+.niveau-risque li[data-actif="true"][data-niveau="eleve"] { background: var(--perte); }
+.alerte-danger { border-color: var(--perte); }
+.alerte-danger .alerte-icone { color: var(--perte); font-size: 0.625rem; }
+.texte-alerte { color: var(--alerte); font-weight: 600; }
+.alertes-regles { list-style: none; padding: 0; display: grid; gap: 0.65rem; margin-top: 0.3rem; }
+.alerte-regle-tete { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; font-size: 0.875rem; margin-bottom: 0.25rem; }
+.alertes-regles li[data-proche="true"] .barre-rempli { background: var(--alerte); }
+.alertes-regles .barre-rempli { transition: width 0.4s ease; }
+.liste-simple { list-style: none; padding: 0; display: grid; gap: 0.45rem; font-size: 0.875rem; line-height: 1.45; }
+.liste-simple li { padding-top: 0.45rem; border-top: 1px solid var(--trait); }
+.liste-simple li:first-child { border-top: 0; padding-top: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .niveau-risque li, .alertes-regles .barre-rempli { transition: none; }
+}
+/* ---------- fiches des indicateurs de risque (formule, interprétation, calcul, visualisation) ---------- */
+.fiches-choix { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.9rem; }
+.fiches-choix button { background: none; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 0.3rem 0.75rem; color: var(--discret); font-size: 0.8125rem; }
+.fiches-choix button:hover { color: var(--texte); }
+.fiches-choix button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); border-color: var(--accent); font-weight: 600; }
+.fiches-choix button.fiche-technique { border-style: dashed; }
+.fiches-choix button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fiche-tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem; }
+.fiche-tete h3 { font-size: 1rem; font-family: var(--police-titre); }
+.fiche-valeur { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; margin: 0.3rem 0 0.6rem; }
+.fiche-corps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; }
+.fiche-corps h4 { font-size: 0.8125rem; color: var(--discret); margin: 0.7rem 0 0.2rem; font-weight: 600; }
+.fiche-corps h4:first-child { margin-top: 0; }
+.fiche-corps p { font-size: 0.875rem; line-height: 1.5; }
+.formule { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.8125rem; background: var(--nuit-3); border: 1px solid var(--trait); border-radius: 6px; padding: 0.5rem 0.7rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.badge-nature { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.75rem; border: 1px solid var(--trait-fort); color: var(--discret); }
+.badge-risque { border-color: var(--perte); color: var(--perte); }
+.badge-performance { border-color: var(--gain); color: var(--gain); }
+.badge-technique { border-style: dashed; }
+.graphe-risque svg { width: 100%; height: auto; display: block; }
+.graphe-barre { fill: var(--barre); transition: opacity 0.2s ease; }
+.graphe-barre:hover { opacity: 0.75; }
+.graphe-barre-queue { fill: var(--perte); }
+.graphe-bande { fill: color-mix(in srgb, var(--accent) 16%, transparent); }
+.graphe-axe { stroke: var(--trait-fort); stroke-width: 1; }
+.graphe-repere-var { stroke: var(--perte); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.graphe-repere-cvar, .graphe-droite { stroke: var(--accent); stroke-width: 1.5; }
+.graphe-point { fill: var(--gain); opacity: 0.6; }
+.graphe-point:hover { opacity: 1; }
+.graphe-texte { fill: var(--discret); font-size: 10px; }
+.legende-risque { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.75rem; margin-top: 0.35rem; }
+.legende-trait { display: inline-block; width: 1rem; height: 0; border-top: 2px solid; vertical-align: middle; }
+.legende-var { border-color: var(--perte); border-top-style: dashed; }
+.legende-cvar { border-color: var(--accent); }
+.legende-bande { border-top-width: 8px; border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.barres-fiche { display: grid; gap: 0.45rem; }
+.barre-fiche { display: grid; grid-template-columns: minmax(4rem, 9rem) minmax(0, 1fr) 4rem; gap: 0.6rem; align-items: center; font-size: 0.8125rem; }
+.table-defilante { overflow-x: auto; }
+@media (max-width: 900px) { .fiche-corps { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .graphe-barre { transition: none; } }
+/* ---------- historique des positions : filtre ---------- */
+.choix-filtre { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0; }
+.choix-filtre button { background: none; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 0.25rem 0.7rem; color: var(--discret); font-size: 0.8125rem; }
+.choix-filtre button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); border-color: var(--accent); font-weight: 600; }
+.choix-filtre button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.actions-position .lien { display: block; font-size: 0.8125rem; margin-bottom: 0.25rem; }
+
+/* ---------- cartes de synthèse du portefeuille ---------- */
+/* Grille dans un conteneur : 1, 2 ou 4 colonnes selon la place réelle. Avec 7 cartes dont une double (8 cases), chaque
+   rangée est pleine : aucune carte orpheline. minmax(0, 1fr) laisse les cartes rétrécir sans déborder. */
+.kpis-conteneur { container-type: inline-size; }
+.kpis-portefeuille { grid-template-columns: minmax(0, 1fr); }
+.kpis-portefeuille .indicateur-grand { grid-column: span 1; }
+@container (min-width: 30rem) {
+  .kpis-portefeuille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis-portefeuille .indicateur-grand { grid-column: span 2; }
+}
+@container (min-width: 58rem) {
+  .kpis-portefeuille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.kpis-portefeuille .indicateur {
+  container-type: inline-size;
+  background: color-mix(in srgb, var(--nuit-2) 84%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  backdrop-filter: blur(10px) saturate(1.15);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.kpis-portefeuille .indicateur:hover, .kpis-portefeuille .indicateur:focus-within {
+  border-color: var(--trait-fort); transform: translateY(-1px); box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+}
+/* Taille fluide selon la largeur de la carte : « 1 234 567,89 USD » tient sans être coupé. */
+.kpis-portefeuille .indicateur-valeur { font-size: clamp(1.1rem, 10cqi, 1.75rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpis-portefeuille .indicateur-grand .indicateur-valeur { font-size: clamp(1.5rem, 8.5cqi, 3rem); font-variant-numeric: tabular-nums; }
+.indicateur-unite { font-size: max(0.75rem, 0.45em); font-weight: 500; color: var(--discret); white-space: nowrap; }
+.indicateur-libelle { display: flex; align-items: center; gap: 0.35rem; }
+.info-carte { position: relative; display: inline-flex; }
+.info-bouton { width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 1px solid var(--trait-fort); background: none; color: var(--discret);
+  font-size: 0.7rem; font-weight: 700; font-style: italic; line-height: 1; display: grid; place-items: center; padding: 0; cursor: help; }
+.info-bouton:hover, .info-bouton:focus-visible { color: var(--texte); border-color: var(--accent); outline: none; }
+.info-bulle { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); z-index: 6; width: max-content; max-width: min(17rem, 80vw);
+  background: var(--nuit-2); color: var(--texte); border: 1px solid var(--trait-fort); border-radius: 6px; padding: 0.45rem 0.6rem;
+  font-size: 0.78rem; line-height: 1.45; box-shadow: 0 6px 18px rgb(0 0 0 / 0.25); visibility: hidden; opacity: 0; transition: opacity 0.15s ease; }
+.info-carte:hover .info-bulle, .info-carte:focus-within .info-bulle { visibility: visible; opacity: 1; }
+.mini-courbe-carte { width: 100%; height: 2.4rem; margin-top: 0.35rem; display: block; }
+.mini-courbe-carte .mini-courbe-ligne { fill: none; stroke: currentColor; stroke-width: 2; }
+.mini-courbe-carte .mini-courbe-aire { fill: currentColor; opacity: 0.12; }
+@media (prefers-reduced-motion: reduce) {
+  .kpis-portefeuille .indicateur, .info-bulle { transition: none; }
+  .kpis-portefeuille .indicateur:hover, .kpis-portefeuille .indicateur:focus-within { transform: none; }
+}

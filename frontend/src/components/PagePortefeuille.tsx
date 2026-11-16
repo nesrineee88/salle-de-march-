@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { lienActif } from "@/lib/actif";
 import { dateHeure, montant, montantSigne, nombre, pct, pctSigne, prix, quantite } from "@/lib/format";
 import { useLecture } from "@/lib/hooks";
 import { LIBELLE_STATUT_REGLE, libelleRegle } from "@/lib/regles";
-import type { Analyse, HistoriqueValeur, Trade } from "@/lib/types";
-import Barres from "./Barres";
+import type { Analyse, HistoriqueValeur, Position, Trade } from "@/lib/types";
 import { useMarche } from "./Contexte";
 import Correlations from "./Correlations";
 import Courbe from "./Courbe";
+import FichesRisque from "./FichesRisque";
+import { DonutRepartition, PerformancesPositions } from "./GraphiquesPortefeuille";
+import HistoriquePositions from "./HistoriquePositions";
 import HistoriqueTransactions from "./HistoriqueTransactions";
 import Indicateur from "./Indicateur";
+import PanneauDiversification from "./PanneauDiversification";
 
 const STATUTS = {
   ok: { icone: "✓", titre: "Dans votre tolérance", classe: "jauge-ok" },
@@ -23,6 +27,20 @@ function ton(n: number): "gain" | "perte" | undefined { return n > 0 ? "gain" : 
 function fleche(n: number): string { return n > 0 ? "▲ " : n < 0 ? "▼ " : ""; }
 /** Une perte exprimée en nombre positif (0,03 = 3 %) : flèche et signe moins seulement s'il y a vraiment une perte. */
 function perte(n: number): string { return n > 1e-9 ? `▼ −${pct(n)}` : pct(n); }
+
+/** Mini-courbe de la valeur du portefeuille (au moins deux points). Décorative : la courbe complète est plus bas. */
+function MiniCourbe({ valeurs }: { valeurs: number[] }) {
+  const lo = Math.min(...valeurs), hi = Math.max(...valeurs);
+  const y = (v: number) => 2 + (1 - (hi === lo ? 0.5 : (v - lo) / (hi - lo))) * 26;
+  const d = valeurs.map((v, i) => `${i ? "L" : "M"}${((i / (valeurs.length - 1)) * 100).toFixed(2)},${y(v).toFixed(2)}`).join("");
+  const hausse = valeurs[valeurs.length - 1] >= valeurs[0];
+  return (
+    <svg className={`mini-courbe-carte ${hausse ? "gain" : "perte"}`} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+      <path d={`${d}L100,30L0,30Z`} className="mini-courbe-aire" />
+      <path d={d} className="mini-courbe-ligne" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
 
 function ProfilVsRisque({ analyse }: { analyse: Analyse | null }) {
   const { mode } = useMarche();
@@ -62,55 +80,53 @@ function ProfilVsRisque({ analyse }: { analyse: Analyse | null }) {
   );
 }
 
-const ONGLETS_REPARTITION = [
-  { cle: "marche", libelle: "Par marché" },
-  { cle: "secteur", libelle: "Par secteur" },
-  { cle: "position", libelle: "Par actif" },
-] as const;
-
 function Repartition({ analyse }: { analyse: Analyse | null }) {
-  const [cle, setCle] = useState<(typeof ONGLETS_REPARTITION)[number]["cle"]>("marche");
-  const { mode } = useMarche();
   if (!analyse) return <section className="panneau"><header className="panneau-tete"><h2>Répartition</h2></header><p className="vide">Chargement…</p></section>;
-  const d = analyse.diversification;
-  const c = analyse.concentration;
   return (
     <section className="panneau">
       <header className="panneau-tete"><h2>Répartition du portefeuille</h2></header>
-      <div className="onglets" role="tablist" aria-label="Type de répartition">
-        {ONGLETS_REPARTITION.map((o) => (
-          <button key={o.cle} role="tab" aria-selected={cle === o.cle} className="onglet" onClick={() => setCle(o.cle)}>{o.libelle}</button>
-        ))}
-      </div>
-      <div className="repartition-corps"><Barres parts={analyse.repartition[cle]} titre={`Répartition ${ONGLETS_REPARTITION.find((o) => o.cle === cle)!.libelle.toLowerCase()}`} /></div>
-      <dl className="mini-indicateurs">
-        <div>
-          <dt>Diversification</dt>
-          <dd>{d ? `${d.score} / 100` : "–"}</dd>
-          {mode === "apprenant" && <p className="aide">{d ? `${d.nb_positions} position(s) sur ${d.nb_marches} marché(s). Plus c'est réparti, plus la note monte.` : "S'affiche dès que vous détenez un actif."}</p>}
-        </div>
-        <div>
-          <dt>Plus grosse position</dt>
-          <dd>{c ? `${c.plus_grosse_position.symbole} · ${pct(c.plus_grosse_position.part, 0)}` : "–"}</dd>
-          {mode === "apprenant" && <p className="aide">{c ? `Comme si vous déteniez ${nombre(c.nb_effectif, 1)} actifs de taille égale.` : ""}</p>}
-        </div>
-      </dl>
+      {analyse.repartition_detail.position.every((l) => l.libelle === "Liquidités") &&
+        <p className="vide donut-etat-vide">Aucune position détenue. Achetez un actif pour voir la répartition des investissements.</p>}
+      <DonutRepartition donnees={analyse.repartition_detail} />
     </section>
   );
 }
 
 function Journal({ trades }: { trades: Trade[] | null }) {
-  const { pf, ordres, execs, annuler, regles, supprimerRegle } = useMarche();
-  const [onglet, setOnglet] = useState<"positions" | "trades" | "ordres" | "executions" | "regles">("positions");
+  const { pf, ordres, execs, annuler, envoyer, regles, supprimerRegle, actifs } = useMarche();
+  const [onglet, setOnglet] = useState<"positions" | "historique" | "trades" | "ordres" | "executions" | "regles">("positions");
+  const [fermeture, setFermeture] = useState<string | null>(null);
+  const [messageFermeture, setMessageFermeture] = useState<{ texte: string; classe: "message-ok" | "erreur" | "notes" } | null>(null);
   const origines = new Map(ordres.map((o) => [o.id, o.origine]));
   const actives = regles.filter((r) => r.statut === "active").length;
   const ouverts = ordres.filter((o) => o.statut === "en_attente" || o.statut === "partiel");
   const LIBELLE_STATUT: Record<string, string> = { en_attente: "En attente", partiel: "Partiel", execute: "Exécuté", annule: "Annulé", rejete: "Refusé" };
   const LIBELLE_TYPE: Record<string, string> = { marche: "Marché", limite: "Limite", stop: "Stop" };
+
+  /** Vend toute la position (part = 1) ou une partie (clôture partielle) au marché. */
+  async function cloturer(position: Position, part = 1) {
+    const q = part >= 1 ? position.quantite : position.quantite * part;
+    if (!window.confirm(`Confirmer la vente au marché de ${quantite(q)} ${position.symbole}${part < 1 ? ` (${pct(part, 0)} de la position)` : ""} ?`)) return;
+    setFermeture(position.symbole);
+    setMessageFermeture(null);
+    try {
+      const ordre = await envoyer({ symbole: position.symbole, sens: "vente", quantite: q, type: "marche" });
+      if (ordre.statut === "execute") setMessageFermeture({ classe: "message-ok", texte: `Vente exécutée : ${quantite(ordre.quantite_executee)} ${position.symbole}.` });
+      else if (ordre.statut === "partiel") setMessageFermeture({ classe: "erreur", texte: `Vente partielle : ${quantite(ordre.quantite_executee)} ${position.symbole} exécutés.` });
+      else if (ordre.statut === "rejete") setMessageFermeture({ classe: "erreur", texte: `Ordre refusé : ${ordre.motif ?? "motif indisponible"}.` });
+      else setMessageFermeture({ classe: ordre.statut === "annule" ? "erreur" : "notes", texte: `Ordre de vente ${ordre.statut === "annule" ? "annulé" : "en attente"} pour ${position.symbole}.` });
+    } catch (e) {
+      setMessageFermeture({ classe: "erreur", texte: e instanceof Error ? e.message : "La vente n’a pas pu être envoyée." });
+    } finally {
+      setFermeture(null);
+    }
+  }
+
   return (
     <section className="panneau panneau-tableau">
       <div className="onglets" role="tablist" aria-label="Détail du portefeuille">
         <button role="tab" aria-selected={onglet === "positions"} className="onglet" onClick={() => setOnglet("positions")}>Positions ({pf?.positions.length ?? 0})</button>
+        <button role="tab" aria-selected={onglet === "historique"} className="onglet" onClick={() => setOnglet("historique")}>Historique des positions</button>
         <button role="tab" aria-selected={onglet === "trades"} className="onglet" onClick={() => setOnglet("trades")}>Trades clôturés ({trades?.length ?? 0})</button>
         <button role="tab" aria-selected={onglet === "ordres"} className="onglet" onClick={() => setOnglet("ordres")}>Ordres{ouverts.length > 0 ? ` (${ouverts.length} en attente)` : ""}</button>
         <button role="tab" aria-selected={onglet === "executions"} className="onglet" onClick={() => setOnglet("executions")}>Historique des transactions ({execs.length})</button>
@@ -119,21 +135,30 @@ function Journal({ trades }: { trades: Trade[] | null }) {
       <div className="tableau-defile" role="tabpanel">
         {onglet === "positions" && (pf && pf.positions.length > 0 ? (
           <table className="tableau">
-            <thead><tr><th>Actif</th><th>Quantité</th><th>Prix moyen</th><th>Prix actuel</th><th>Valeur</th><th>Gain ou perte latent</th><th>Rendement</th><th>Poids</th></tr></thead>
+            <thead><tr><th>Actif</th><th>Quantité</th><th>Prix moyen</th><th>Prix actuel</th><th>Valeur</th><th>Gain ou perte latent</th><th>Rendement</th><th>Poids</th><th>Actions</th></tr></thead>
             <tbody>
               {pf.positions.map((p) => {
                 const r = p.prix_moyen ? p.prix_marche / p.prix_moyen - 1 : null;
+                const actif = actifs.find((a) => a.symbole === p.symbole);
                 return (
                   <tr key={p.symbole}>
                     <td>{p.symbole}</td><td>{quantite(p.quantite)}</td><td>{prix(p.prix_moyen)}</td><td>{prix(p.prix_marche)}</td><td>{montant(p.valeur)}</td>
                     <td className={ton(p.pnl_latent)}>{fleche(p.pnl_latent)}{montantSigne(p.pnl_latent)}</td>
                     <td className={r !== null ? ton(r) : undefined}>{r !== null ? `${fleche(r)}${pctSigne(r)}` : "–"}</td><td>{pct(p.poids)}</td>
+                    <td className="actions-position">
+                      <button type="button" className="btn btn-danger btn-auto" disabled={fermeture !== null} onClick={() => void cloturer(p)}>
+                        {fermeture === p.symbole ? "Envoi…" : "Clôturer"}
+                      </button>
+                      <button type="button" className="lien" disabled={fermeture !== null} onClick={() => void cloturer(p, 0.5)}>Vendre la moitié</button>
+                      {actif && <Link className="lien-discret" href={lienActif(actif)}>Règles SL/TP</Link>}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        ) : <p className="vide">Aucune position. Ouvrez un marché pour passer un premier ordre.</p>)}
+        ) : <p className="vide">Aucune position. <Link href="/actions">Ouvrez un marché</Link> pour passer un premier ordre.</p>)}
+        {onglet === "positions" && messageFermeture && <p className={messageFermeture.classe} role="status">{messageFermeture.texte}</p>}
 
         {onglet === "trades" && (trades && trades.length > 0 ? (
           <table className="tableau">
@@ -165,6 +190,8 @@ function Journal({ trades }: { trades: Trade[] | null }) {
             </tbody>
           </table>
         ) : <p className="vide">Aucun ordre pour le moment.</p>)}
+
+        {onglet === "historique" && <HistoriquePositions />}
 
         {onglet === "executions" && <HistoriqueTransactions />}
 
@@ -206,18 +233,34 @@ export default function PagePortefeuille() {
         </div>
       </header>
 
-      <section className="kpis" aria-label="Résumé">
-        <Indicateur grand libelle="Valeur du portefeuille" valeur={pf ? montant(pf.equity) : "–"} detail={pf ? `Capital de départ : ${montant(pf.capital_initial)}` : undefined}
-          explication="Liquidités plus valeur de toutes vos positions au prix actuel." />
-        <Indicateur libelle="Gain ou perte total" valeur={pf ? `${fleche(pf.pnl_total)}${montantSigne(pf.pnl_total)}` : "–"} ton={pf ? ton(pf.pnl_total) : undefined} detail={rendement !== null ? pctSigne(rendement) : undefined}
-          explication="Valeur actuelle moins capital de départ." />
-        <Indicateur libelle="Réalisé" valeur={pf ? `${fleche(pf.pnl_realise)}${montantSigne(pf.pnl_realise)}` : "–"} ton={pf ? ton(pf.pnl_realise) : undefined}
-          explication="Gains et pertes déjà encaissés par vos ventes." />
-        <Indicateur libelle="Latent" valeur={pf ? `${fleche(pf.pnl_latent)}${montantSigne(pf.pnl_latent)}` : "–"} ton={pf ? ton(pf.pnl_latent) : undefined}
-          explication="Gains et pertes sur ce que vous détenez encore : ils peuvent encore changer." />
-        <Indicateur libelle="Liquidités" valeur={pf ? montant(pf.cash) : "–"} detail={pf ? `Frais payés : ${montant(pf.frais_cumules)}` : undefined}
-          explication="L'argent non investi, disponible pour acheter." />
-      </section>
+      <div className="kpis-conteneur">
+        <section className="kpis kpis-portefeuille" aria-label="Résumé du portefeuille">
+          <Indicateur grand libelle="Valeur du portefeuille" valeur={pf ? montant(pf.equity) : "–"} unite="USD"
+            detail={pf ? `Capital de départ : ${montant(pf.capital_initial)} USD` : undefined}
+            explication="Liquidités plus valeur de toutes vos positions au prix actuel.">
+            {hist && hist.points.length >= 2 && <MiniCourbe valeurs={hist.points.map((x) => x.equity)} />}
+          </Indicateur>
+          <Indicateur libelle="Valeur des positions" valeur={pf ? montant(pf.equity - pf.cash) : "–"} unite="USD"
+            detail={pf && pf.equity ? `${pct((pf.equity - pf.cash) / pf.equity, 0)} du portefeuille` : undefined}
+            explication="Ce que valent vos actifs au prix actuel : valeur du portefeuille moins les liquidités." />
+          <Indicateur libelle="Liquidités" valeur={pf ? montant(pf.cash) : "–"} unite="USD"
+            detail={pf && pf.equity ? `${pct(pf.cash / pf.equity, 0)} du portefeuille` : undefined}
+            explication="L'argent non investi, disponible pour acheter." />
+          <Indicateur libelle="Performance" valeur={rendement !== null ? `${fleche(rendement)}${pctSigne(rendement)}` : "–"} ton={rendement !== null ? ton(rendement) : undefined}
+            detail={pf ? <>Résultat total : {montantSigne(pf.pnl_total)} USD<br />dont frais {montantSigne(-pf.frais_cumules)} USD</> : undefined}
+            infobulle={{ simple: "De combien la valeur de votre portefeuille a monté ou baissé depuis le départ, frais compris.",
+              formule: "Performance = Résultat total / Capital de départ ; Résultat total = Réalisé + Latent − Frais" }} />
+          <Indicateur libelle="Réalisé" valeur={pf ? `${fleche(pf.pnl_realise)}${montantSigne(pf.pnl_realise)}` : "–"} unite="USD" ton={pf ? ton(pf.pnl_realise) : undefined}
+            infobulle={{ simple: "Gains et pertes déjà encaissés par vos ventes (avant frais).",
+              formule: "Réalisé = Σ (prix de vente − prix de revient moyen) × quantité vendue" }} />
+          <Indicateur libelle="Latent" valeur={pf ? `${fleche(pf.pnl_latent)}${montantSigne(pf.pnl_latent)}` : "–"} unite="USD" ton={pf ? ton(pf.pnl_latent) : undefined}
+            infobulle={{ simple: "Ce que vous gagneriez ou perdriez en vendant tout maintenant : cela peut encore changer.",
+              formule: "Latent = Σ (prix actuel − prix de revient moyen) × quantité détenue" }} />
+          <Indicateur libelle="Frais payés" valeur={pf ? `${fleche(-pf.frais_cumules)}${montantSigne(-pf.frais_cumules)}` : "–"} unite="USD" ton={pf && pf.frais_cumules > 0 ? "perte" : undefined}
+            infobulle={{ simple: "Les commissions payées à chaque achat et à chaque vente : elles réduisent toujours le résultat.",
+              formule: "Frais = Σ taux de frais × |prix| × quantité, pour chaque exécution" }} />
+        </section>
+      </div>
 
       <div className="grille-courbe">
         <section className="panneau">
@@ -256,8 +299,18 @@ export default function PagePortefeuille() {
         )}
       </section>
 
+      <FichesRisque analyse={analyse} />
+
       <div className="grille-2">
         <Repartition analyse={analyse} />
+        <section className="panneau">
+          <header className="panneau-tete"><h2>Performance par position</h2></header>
+          <PerformancesPositions lignes={analyse?.repartition_detail.position ?? []} />
+        </section>
+      </div>
+
+      <div className="grille-2">
+        <PanneauDiversification analyse={analyse} />
         <section className="panneau">
           <header className="panneau-tete"><h2>Corrélations entre vos actifs</h2></header>
           {analyse?.correlations ? (
