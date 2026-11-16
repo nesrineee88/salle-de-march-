@@ -10,6 +10,7 @@ import type { Analyse, HistoriqueValeur, Position, Trade } from "@/lib/types";
 import { useMarche } from "./Contexte";
 import Correlations from "./Correlations";
 import Courbe from "./Courbe";
+import FichesRisque from "./FichesRisque";
 import { DonutRepartition, PerformancesPositions } from "./GraphiquesPortefeuille";
 import HistoriqueTransactions from "./HistoriqueTransactions";
 import Indicateur from "./Indicateur";
@@ -261,6 +262,8 @@ export default function PagePortefeuille() {
           </ul>
         )}
       </section>
+
+      <FichesRisque analyse={analyse} />
 
       <div className="grille-2">
         <Repartition analyse={analyse} />

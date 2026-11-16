@@ -16,8 +16,10 @@ import numpy as np
 import pandas as pd
 
 JOURS_AN = 365.0
+SEANCES_AN = 252.0          # séances par an : annualise des rendements de séance (jours où tous les actifs cotent)
 MIN_POINTS_COURBE = 10
 MIN_JOURS_VAR = 30
+MIN_JOURS_BETA = 30
 
 
 def rendements_relatifs(valeurs) -> list[float]:
@@ -123,3 +125,52 @@ def comparer_profil(profil: dict | None, drawdown_courant: float | None, var95: 
         "perte_actuelle": courant, "utilisation": courant / tolerance if tolerance else None,
         "var95_jour": var95, "var_sur_tolerance": (var95 / tolerance) if (var95 is not None and tolerance) else None,
     }
+
+
+def _finis(valeurs) -> np.ndarray:
+    r = np.asarray(list(valeurs), dtype=float)
+    return r[np.isfinite(r)]
+
+
+def ecart_type(rendements) -> float | None:
+    """Écart-type d'échantillon des rendements (sans unité, par période) :
+    σ = √( Σ (rᵢ − r̄)² / (n − 1) ). None s'il y a moins de deux rendements valides."""
+    r = _finis(rendements)
+    return float(np.std(r, ddof=1)) if len(r) >= 2 else None
+
+
+def beta(r_portefeuille, r_marche, min_jours: int = MIN_JOURS_BETA) -> dict | None:
+    """Bêta du portefeuille par rapport à un indice, sur des rendements de mêmes dates.
+
+    β = Cov(r_p, r_m) / Var(r_m) (sans unité) ; α = r̄_p − β × r̄_m (rendement par période non expliqué par l'indice) ;
+    corrélation ρ = Cov(r_p, r_m) / (σ_p × σ_m). Covariance et variances d'échantillon (n − 1).
+    None si l'historique commun est trop court ou si l'indice n'a pas bougé (variance nulle : division impossible)."""
+    p = np.asarray(list(r_portefeuille), dtype=float)
+    m = np.asarray(list(r_marche), dtype=float)
+    if len(p) != len(m):
+        raise ValueError("les deux séries de rendements doivent être alignées sur les mêmes dates")
+    ok = np.isfinite(p) & np.isfinite(m)
+    p, m = p[ok], m[ok]
+    if len(p) < max(min_jours, 2):
+        return None
+    var_m = float(np.var(m, ddof=1))
+    if var_m <= 1e-18:
+        return None
+    cov = float(np.sum((p - p.mean()) * (m - m.mean())) / (len(p) - 1))
+    sigma_p = float(np.std(p, ddof=1))
+    b = cov / var_m
+    return {
+        "beta": b, "alpha_jour": float(p.mean() - b * m.mean()), "covariance": cov, "variance_marche": var_m,
+        "correlation": cov / (sigma_p * math.sqrt(var_m)) if sigma_p > 1e-18 else None, "jours": int(len(p)),
+    }
+
+
+def histogramme(rendements, nb: int = 20) -> dict | None:
+    """Distribution des rendements en `nb` classes de même largeur : bornes (nb + 1 valeurs) et effectifs."""
+    r = _finis(rendements)
+    if len(r) == 0:
+        return None
+    if r.max() == r.min():                       # série constante : une seule classe (np.histogram exige une largeur)
+        return {"bornes": [float(r.min()), float(r.max())], "effectifs": [int(len(r))]}
+    effectifs, bornes = np.histogram(r, bins=nb)
+    return {"bornes": [float(x) for x in bornes], "effectifs": [int(x) for x in effectifs]}

@@ -169,10 +169,24 @@ def simuler_choc_sectoriel(valo: dict, catalogue: dict[str, tuple[str, str]], se
     }
 
 
+def _beta_portefeuille(serie: pd.Series, benchmark: pd.Series | None, nom_indice: str) -> dict | None:
+    """Bêta du portefeuille actuel contre l'indice, sur les dates communes, avec les points du nuage (r_indice, r_portefeuille)."""
+    if benchmark is None or serie.empty:
+        return None
+    r_m = ind.rendements_actifs({"m": benchmark})["m"]
+    commun = pd.concat([serie.rename("p"), r_m], axis=1, join="inner").dropna()
+    b = ind.beta(commun["p"], commun["m"])
+    if b is None:
+        return None
+    return {**b, "indice": nom_indice, "points": [[float(x), float(y)] for x, y in zip(commun["m"], commun["p"])]}
+
+
 def analyser(valo: dict, historique: list[dict], series_prix: dict[str, pd.Series],
-             catalogue: dict[str, tuple[str, str]], profil: dict | None) -> dict:
+             catalogue: dict[str, tuple[str, str]], profil: dict | None,
+             benchmark: pd.Series | None = None, nom_indice: str = "S&P 500") -> dict:
     """`valo` : sortie de SalleDeMarche.valorisation ; `historique` : points de valeur jusqu'à maintenant ;
-    `series_prix` : clôtures passées de chaque actif détenu (jamais le futur) ; `catalogue` : symbole -> (classe, secteur)."""
+    `series_prix` : clôtures passées de chaque actif détenu (jamais le futur) ; `catalogue` : symbole -> (classe, secteur) ;
+    `benchmark` : clôtures passées de l'indice de référence (pour le bêta), None si indisponible."""
     avertissements: list[str] = []
     equity = valo["equity"]
     positions = valo["positions"]
@@ -191,6 +205,8 @@ def analyser(valo: dict, historique: list[dict], series_prix: dict[str, pd.Serie
     poids = {p["symbole"]: p["valeur"] / equity for p in positions} if equity else {}
     risque = None
     correlations = None
+    covariances = None
+    beta = None
     if poids:
         retours = ind.rendements_actifs({s: series_prix[s] for s in poids if s in series_prix})
         serie = ind.rendements_portefeuille(poids, retours)
@@ -200,9 +216,16 @@ def analyser(valo: dict, historique: list[dict], series_prix: dict[str, pd.Serie
         else:
             risque["var_montant"] = risque["var"] * equity
             risque["cvar_montant"] = risque["cvar"] * equity
+            et = ind.ecart_type(serie)
+            risque["ecart_type_jour"] = et
+            risque["volatilite_annuelle_seances"] = et * ind.SEANCES_AN ** 0.5 if et is not None else None
+            risque["distribution"] = ind.histogramme(serie)
+        beta = _beta_portefeuille(serie, benchmark, nom_indice)
         if len(retours.columns) >= 2 and len(retours) >= ind.MIN_JOURS_VAR:
             c = retours.corr()
             correlations = {"symboles": list(c.columns), "matrice": [[float(x) for x in ligne] for ligne in c.to_numpy()]}
+            v = retours.cov()                     # covariance d'échantillon des rendements de séance (unité : rendement²)
+            covariances = {"symboles": list(v.columns), "matrice": [[float(x) for x in ligne] for ligne in v.to_numpy()]}
     else:
         avertissements.append("Aucune position : les indicateurs de risque apparaîtront après un premier achat.")
 
@@ -230,6 +253,8 @@ def analyser(valo: dict, historique: list[dict], series_prix: dict[str, pd.Serie
         "repartition_detail": {cle: _repartition_detail(valo, catalogue, cle) for cle in ("marche", "secteur", "position")},
         "pistes_diversification": pistes_diversification(positions, catalogue),
         "correlations": correlations,
+        "covariances": covariances,
+        "beta": beta,
         "profil": ind.comparer_profil(profil, dd["courant"], risque["var"] if risque else None),
         "avertissements": avertissements,
     }

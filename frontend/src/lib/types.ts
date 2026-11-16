@@ -211,7 +211,14 @@ export interface Analyse {
     sharpe: number | null;
     sortino: number | null;
   };
-  risque: { var: number; cvar: number; jours: number; niveau: number; var_montant: number; cvar_montant: number } | null;
+  risque: {
+    var: number; cvar: number; jours: number; niveau: number; var_montant: number; cvar_montant: number;
+    ecart_type_jour: number | null;               // écart-type d'échantillon des rendements de séance
+    volatilite_annuelle_seances: number | null;   // écart-type × √252
+    distribution: Distribution | null;
+  } | null;
+  beta: Beta | null;
+  covariances: { symboles: string[]; matrice: number[][] } | null;
   concentration: { hhi: number; nb_effectif: number; plus_grosse_position: { symbole: string; part: number } } | null;
   diversification: { score: number; nb_positions: number; nb_marches: number } | null;
   repartition: { marche: PartRepartition[]; secteur: PartRepartition[]; position: PartRepartition[] };
@@ -525,3 +532,17 @@ export interface StatsAdmin {
     duree_jeton_acces_minutes: number; duree_session_jours: number; echecs_avant_verrouillage: number; note: string };
 }
 export interface PerformanceAdmin { id: number; nom: string; email: string; role: string; actif: boolean; profil_risque: string | null; portefeuille: { rendement: number; drawdown: number; score: number; date_simulee: string; points: number; valeur: number } | null }
+
+// ----------------------------------------------------------------------------- mesures de risque (section 5)
+export interface Distribution { bornes: number[]; effectifs: number[] }
+
+export interface Beta {
+  beta: number;
+  alpha_jour: number;
+  covariance: number;
+  variance_marche: number;
+  correlation: number | null;
+  jours: number;
+  indice: string;
+  points: [number, number][];        // (rendement de l'indice, rendement du portefeuille) par séance
+}
