@@ -30,7 +30,9 @@ def _analyser_bac(ctx: Contexte, bac, t, u: Utilisateur) -> dict:
     series = {p["symbole"]: ctx.magasin.barres_terminees(p["symbole"], t.date(), n=FENETRE_RISQUE_JOURS)["close"]
               for p in valo["positions"] if ctx.magasin.a_des_donnees(p["symbole"])}
     catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
-    return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque)
+    reference = (ctx.magasin.barres_terminees(BENCHMARK, t.date(), n=FENETRE_RISQUE_JOURS)["close"]
+                 if ctx.magasin.a_des_donnees(BENCHMARK) else None)        # séances terminées : jamais le futur
+    return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque, benchmark=reference)
 
 
 @routeur.get("/portefeuille/analyse")

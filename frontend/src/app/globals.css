@@ -1186,3 +1186,43 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 @media (prefers-reduced-motion: reduce) {
   .niveau-risque li, .alertes-regles .barre-rempli { transition: none; }
 }
+/* ---------- fiches des indicateurs de risque (formule, interprétation, calcul, visualisation) ---------- */
+.fiches-choix { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.9rem; }
+.fiches-choix button { background: none; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 0.3rem 0.75rem; color: var(--discret); font-size: 0.8125rem; }
+.fiches-choix button:hover { color: var(--texte); }
+.fiches-choix button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); border-color: var(--accent); font-weight: 600; }
+.fiches-choix button.fiche-technique { border-style: dashed; }
+.fiches-choix button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fiche-tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1rem; }
+.fiche-tete h3 { font-size: 1rem; font-family: var(--police-titre); }
+.fiche-valeur { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; margin: 0.3rem 0 0.6rem; }
+.fiche-corps { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.25rem; }
+.fiche-corps h4 { font-size: 0.8125rem; color: var(--discret); margin: 0.7rem 0 0.2rem; font-weight: 600; }
+.fiche-corps h4:first-child { margin-top: 0; }
+.fiche-corps p { font-size: 0.875rem; line-height: 1.5; }
+.formule { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.8125rem; background: var(--nuit-3); border: 1px solid var(--trait); border-radius: 6px; padding: 0.5rem 0.7rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.badge-nature { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.75rem; border: 1px solid var(--trait-fort); color: var(--discret); }
+.badge-risque { border-color: var(--perte); color: var(--perte); }
+.badge-performance { border-color: var(--gain); color: var(--gain); }
+.badge-technique { border-style: dashed; }
+.graphe-risque svg { width: 100%; height: auto; display: block; }
+.graphe-barre { fill: var(--barre); transition: opacity 0.2s ease; }
+.graphe-barre:hover { opacity: 0.75; }
+.graphe-barre-queue { fill: var(--perte); }
+.graphe-bande { fill: color-mix(in srgb, var(--accent) 16%, transparent); }
+.graphe-axe { stroke: var(--trait-fort); stroke-width: 1; }
+.graphe-repere-var { stroke: var(--perte); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.graphe-repere-cvar, .graphe-droite { stroke: var(--accent); stroke-width: 1.5; }
+.graphe-point { fill: var(--gain); opacity: 0.6; }
+.graphe-point:hover { opacity: 1; }
+.graphe-texte { fill: var(--discret); font-size: 10px; }
+.legende-risque { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.75rem; margin-top: 0.35rem; }
+.legende-trait { display: inline-block; width: 1rem; height: 0; border-top: 2px solid; vertical-align: middle; }
+.legende-var { border-color: var(--perte); border-top-style: dashed; }
+.legende-cvar { border-color: var(--accent); }
+.legende-bande { border-top-width: 8px; border-color: color-mix(in srgb, var(--accent) 30%, transparent); }
+.barres-fiche { display: grid; gap: 0.45rem; }
+.barre-fiche { display: grid; grid-template-columns: minmax(4rem, 9rem) minmax(0, 1fr) 4rem; gap: 0.6rem; align-items: center; font-size: 0.8125rem; }
+.table-defilante { overflow-x: auto; }
+@media (max-width: 900px) { .fiche-corps { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .graphe-barre { transition: none; } }
