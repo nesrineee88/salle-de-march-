@@ -161,9 +161,12 @@ class Contexte:
             journal.exception("Enregistrement de l'historique impossible (utilisateur %s)", utilisateur_id)
 
     def historique_visible(self, bac: Bac, t: datetime) -> list[dict]:
-        """Les points jusqu'à l'instant simulé courant (après un retour en arrière, le « futur » est masqué)."""
+        """Les points jusqu'à l'instant simulé courant (après un retour en arrière, le « futur » est masqué).
+        Un seul point par jour, triés par date : après des allers-retours dans le temps, un même jour peut avoir été
+        enregistré deux fois ; on garde le plus récemment enregistré, comme la base (clé utilisateur + jour)."""
         limite = t.isoformat(timespec="seconds")
-        return [p for p in bac.historique if p["instant"] <= limite]
+        par_jour = {p["jour"]: p for p in bac.historique if p["instant"] <= limite}
+        return [par_jour[j] for j in sorted(par_jour)]
 
 
 @contextmanager
