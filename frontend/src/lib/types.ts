@@ -581,3 +581,21 @@ export interface Beta {
   indice: string;
   points: [number, number][];        // (rendement de l'indice, rendement du portefeuille) par séance
 }
+
+// ----------------------------------------------------------------------------- historique des positions (ouverture → clôture)
+export interface PositionHistorique {
+  symbole: string;
+  statut: "ouverte" | "cloturee";
+  ouverte_le: string;
+  cloturee_le: string | null;
+  quantite_max: number;
+  quantite_restante: number;
+  prix_achat_moyen: number | null;
+  prix_vente_moyen: number | null;
+  pnl_realise: number;
+  frais: number;
+  resultat_net: number;            // réalisé − frais du cycle
+  rendement_net: number | null;    // résultat net / coût des achats
+  motif_cloture: "manuelle" | "stop_loss" | "take_profit" | "stop_suiveur" | "achat_complementaire" | "regle" | null;
+  nb_operations: number;
+}

@@ -1226,3 +1226,9 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .table-defilante { overflow-x: auto; }
 @media (max-width: 900px) { .fiche-corps { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .graphe-barre { transition: none; } }
+/* ---------- historique des positions : filtre ---------- */
+.choix-filtre { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0; }
+.choix-filtre button { background: none; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 0.25rem 0.7rem; color: var(--discret); font-size: 0.8125rem; }
+.choix-filtre button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); border-color: var(--accent); font-weight: 600; }
+.choix-filtre button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.actions-position .lien { display: block; font-size: 0.8125rem; margin-bottom: 0.25rem; }
