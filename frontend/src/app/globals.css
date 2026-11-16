@@ -1259,7 +1259,7 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 /* Taille fluide selon la largeur de la carte : « 1 234 567,89 USD » tient sans être coupé. */
 .kpis-portefeuille .indicateur-valeur { font-size: clamp(1.1rem, 10cqi, 1.75rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .kpis-portefeuille .indicateur-grand .indicateur-valeur { font-size: clamp(1.5rem, 8.5cqi, 3rem); font-variant-numeric: tabular-nums; }
-.indicateur-unite { font-size: 0.5em; font-weight: 500; color: var(--discret); white-space: nowrap; }
+.indicateur-unite { font-size: max(0.75rem, 0.45em); font-weight: 500; color: var(--discret); white-space: nowrap; }
 .indicateur-libelle { display: flex; align-items: center; gap: 0.35rem; }
 .info-carte { position: relative; display: inline-flex; }
 .info-bouton { width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 1px solid var(--trait-fort); background: none; color: var(--discret);
