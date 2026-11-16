@@ -119,3 +119,14 @@ donner le rôle `trader` à d'autres comptes depuis la page Administration (`PAT
 - Vérifié sur 8010 : /bougies pour AAPL et BTC-USD en 1min, 5min, 15min, 1h, 1j (300 bougies, 40-70 ms, jamais après l'instant simulé).
 - Tracés manuels en localStorage (confort par navigateur, non partagé).
 - Le dossier de travail est sur cette branche.
+
+### Intégration et cartes (FAIT)
+- `integration/demo` = feature/portefeuille-visuel + P1 + P2 + P3 + docs + feature/portefeuille-cartes (commit f6bd475).
+  Conflits résolus en gardant les deux côtés (routes_portefeuille.py : `_analyser_bac` de P1 + indice de référence de P2).
+- Tests : 389 réussis / 2 préexistants / 20 ignorés ; tsc OK.
+- Poussé sur GitHub (demande explicite) : integration/demo, feature/analyse-technique, feature/portefeuille-ux. main non touchée.
+- Non fusionnés dans integration/demo : P4 (feature/analyse-technique) et feature/portefeuille-ux (recoupe les cartes).
+- Corrections après retour visuel : « i » en double devant les infobulles (classe `info` déjà prise, renommée `info-carte`),
+  unité USD lisible (12 px minimum). Vérifié sur capture : 0 + 414,10 − 2,79 = 411,31 = résultat total ; +0,41 %.
+- Tout le travail poussé sur GitHub à la demande de l'utilisatrice (toutes les branches sauf main).
+- PROCHAINE ÉTAPE proposée : fusionner P4 dans integration/demo, puis « prochaine ouverture » quand le marché est fermé.
