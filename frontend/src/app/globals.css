@@ -1232,3 +1232,47 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .choix-filtre button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); border-color: var(--accent); font-weight: 600; }
 .choix-filtre button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .actions-position .lien { display: block; font-size: 0.8125rem; margin-bottom: 0.25rem; }
+
+/* ---------- cartes de synthèse du portefeuille ---------- */
+/* Grille dans un conteneur : 1, 2 ou 4 colonnes selon la place réelle. Avec 7 cartes dont une double (8 cases), chaque
+   rangée est pleine : aucune carte orpheline. minmax(0, 1fr) laisse les cartes rétrécir sans déborder. */
+.kpis-conteneur { container-type: inline-size; }
+.kpis-portefeuille { grid-template-columns: minmax(0, 1fr); }
+.kpis-portefeuille .indicateur-grand { grid-column: span 1; }
+@container (min-width: 30rem) {
+  .kpis-portefeuille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis-portefeuille .indicateur-grand { grid-column: span 2; }
+}
+@container (min-width: 58rem) {
+  .kpis-portefeuille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+.kpis-portefeuille .indicateur {
+  container-type: inline-size;
+  background: color-mix(in srgb, var(--nuit-2) 84%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  backdrop-filter: blur(10px) saturate(1.15);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+.kpis-portefeuille .indicateur:hover, .kpis-portefeuille .indicateur:focus-within {
+  border-color: var(--trait-fort); transform: translateY(-1px); box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+}
+/* Taille fluide selon la largeur de la carte : « 1 234 567,89 USD » tient sans être coupé. */
+.kpis-portefeuille .indicateur-valeur { font-size: clamp(1.1rem, 10cqi, 1.75rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpis-portefeuille .indicateur-grand .indicateur-valeur { font-size: clamp(1.5rem, 8.5cqi, 3rem); font-variant-numeric: tabular-nums; }
+.indicateur-unite { font-size: 0.5em; font-weight: 500; color: var(--discret); white-space: nowrap; }
+.indicateur-libelle { display: flex; align-items: center; gap: 0.35rem; }
+.info { position: relative; display: inline-flex; }
+.info-bouton { width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 1px solid var(--trait-fort); background: none; color: var(--discret);
+  font-size: 0.7rem; font-weight: 700; font-style: italic; line-height: 1; display: grid; place-items: center; padding: 0; cursor: help; }
+.info-bouton:hover, .info-bouton:focus-visible { color: var(--texte); border-color: var(--accent); outline: none; }
+.info-bulle { position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); z-index: 6; width: max-content; max-width: min(17rem, 80vw);
+  background: var(--nuit-2); color: var(--texte); border: 1px solid var(--trait-fort); border-radius: 6px; padding: 0.45rem 0.6rem;
+  font-size: 0.78rem; line-height: 1.45; box-shadow: 0 6px 18px rgb(0 0 0 / 0.25); visibility: hidden; opacity: 0; transition: opacity 0.15s ease; }
+.info:hover .info-bulle, .info:focus-within .info-bulle { visibility: visible; opacity: 1; }
+.mini-courbe-carte { width: 100%; height: 2.4rem; margin-top: 0.35rem; display: block; }
+.mini-courbe-carte .mini-courbe-ligne { fill: none; stroke: currentColor; stroke-width: 2; }
+.mini-courbe-carte .mini-courbe-aire { fill: currentColor; opacity: 0.12; }
+@media (prefers-reduced-motion: reduce) {
+  .kpis-portefeuille .indicateur, .info-bulle { transition: none; }
+  .kpis-portefeuille .indicateur:hover, .kpis-portefeuille .indicateur:focus-within { transform: none; }
+}
