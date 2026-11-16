@@ -27,7 +27,7 @@ export default function Indicateur({ libelle, valeur, ton, detail, explication, 
       <p className="indicateur-libelle">
         {libelle}
         {infobulle && (
-          <span className="info">
+          <span className="info-carte">
             <button type="button" className="info-bouton" aria-label={`Comprendre : ${libelle}`} aria-describedby={id}>i</button>
             <span role="tooltip" id={id} className="info-bulle">{mode === "apprenant" ? infobulle.simple : infobulle.formule}</span>
           </span>
