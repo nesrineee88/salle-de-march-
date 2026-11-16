@@ -11,6 +11,7 @@ import { useSuivis } from "@/lib/suivis";
 import type { Actualite, Barre } from "@/lib/types";
 import { useMarche } from "./Contexte";
 import Graphique from "./Graphique";
+import { barreEnBougie } from "@/lib/technique";
 
 interface Profil {
   symbole: string; nom: string; classe: string; secteur: string; devise: string; calendrier: string; tradable: boolean;
@@ -144,7 +145,7 @@ export default function FicheActif({ symbole }: { symbole: string }) {
 
         {onglet === "Graphique" && (
           <div className="panneau">
-            {barres.length > 0 ? <Graphique barres={barres} symbole={symbole} /> : <p className="vide">Pas encore de bougies à cette date : avancez dans le temps.</p>}
+            {barres.length > 0 ? <Graphique bougies={barres.map(barreEnBougie)} symbole={symbole} /> : <p className="vide">Pas encore de bougies à cette date : avancez dans le temps.</p>}
           </div>
         )}
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta
 
 import numpy as np
 
@@ -56,6 +56,24 @@ class MoteurMarche:
                 n=self._nb_ticks, graine=graine_barre(actif.symbole, jour),
             )
         return self._chemins[cle]
+
+    @property
+    def nb_ticks(self) -> int:
+        return self._nb_ticks
+
+    def chemin_seance(self, symbole: str, jour: date) -> tuple[datetime, datetime, np.ndarray] | None:
+        """Lecture seule : début et fin UTC de la séance et son chemin de ticks simulés (le même que pour les cotations).
+        None s'il n'y a pas de barre ce jour-là ou si la barre vient du flux en direct (pas de ticks simulés)."""
+        actif = self._univers[symbole]
+        barre = self._magasin.barre_du_jour(symbole, jour)
+        if barre is None or barre.get("direct"):
+            return None
+        if actif.session_utc is None:
+            debut = datetime.combine(jour, time.min)
+            fin = debut + timedelta(days=1)
+        else:
+            debut, fin = (datetime.combine(jour, h) for h in actif.session_utc)
+        return debut, fin, self._chemin(actif, jour, barre)
 
     def invalider(self) -> None:
         """Vide le cache des chemins de ticks (à appeler quand les prix servis changent, par exemple après un scénario de crise)."""

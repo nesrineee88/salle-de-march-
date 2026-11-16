@@ -1159,3 +1159,17 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .entete-droite { gap: 0.5rem; }
 @media (prefers-reduced-motion: reduce) { .btn-rond, .btn-rond::after { transition: none; } }
 
+
+/* ---------- analyse technique : unités de temps, repères, tracé manuel ---------- */
+.outils-techniques { display: grid; gap: 0.4rem; margin-bottom: 0.4rem; }
+.outils-ligne { display: flex; flex-wrap: wrap; gap: 0.3rem 1.2rem; align-items: center; }
+.outils-ligne .choix-filtre { margin: 0; align-items: center; }
+.choix-filtre { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0; }
+.choix-filtre button { background: none; border: 1px solid var(--trait-fort); border-radius: 999px; padding: 0.25rem 0.7rem; color: var(--discret); font-size: 0.8125rem; }
+.choix-filtre button:hover:not(:disabled) { color: var(--texte); }
+.choix-filtre button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); border-color: var(--accent); font-weight: 600; }
+.choix-filtre button:disabled { opacity: 0.45; cursor: not-allowed; }
+.choix-filtre button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.outils-consigne { font-size: 0.8125rem; color: var(--accent); }
+.graphique-trace { cursor: crosshair; }
+.liste-cassures { list-style: none; padding: 0; display: grid; gap: 0.2rem; font-size: 0.8125rem; }
