@@ -28,6 +28,20 @@ function fleche(n: number): string { return n > 0 ? "▲ " : n < 0 ? "▼ " : ""
 /** Une perte exprimée en nombre positif (0,03 = 3 %) : flèche et signe moins seulement s'il y a vraiment une perte. */
 function perte(n: number): string { return n > 1e-9 ? `▼ −${pct(n)}` : pct(n); }
 
+/** Mini-courbe de la valeur du portefeuille (au moins deux points). Décorative : la courbe complète est plus bas. */
+function MiniCourbe({ valeurs }: { valeurs: number[] }) {
+  const lo = Math.min(...valeurs), hi = Math.max(...valeurs);
+  const y = (v: number) => 2 + (1 - (hi === lo ? 0.5 : (v - lo) / (hi - lo))) * 26;
+  const d = valeurs.map((v, i) => `${i ? "L" : "M"}${((i / (valeurs.length - 1)) * 100).toFixed(2)},${y(v).toFixed(2)}`).join("");
+  const hausse = valeurs[valeurs.length - 1] >= valeurs[0];
+  return (
+    <svg className={`mini-courbe-carte ${hausse ? "gain" : "perte"}`} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+      <path d={`${d}L100,30L0,30Z`} className="mini-courbe-aire" />
+      <path d={d} className="mini-courbe-ligne" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
 function ProfilVsRisque({ analyse }: { analyse: Analyse | null }) {
   const { mode } = useMarche();
   if (!analyse) return <section className="panneau"><header className="panneau-tete"><h2>Profil de risque</h2></header><p className="vide">Chargement…</p></section>;
@@ -219,19 +233,34 @@ export default function PagePortefeuille() {
         </div>
       </header>
 
-      <section className="kpis" aria-label="Résumé">
-        <Indicateur grand libelle="Valeur du portefeuille" valeur={pf ? montant(pf.equity) : "–"} detail={pf ? `Capital de départ : ${montant(pf.capital_initial)}` : undefined}
-          explication="Liquidités plus valeur de toutes vos positions au prix actuel." />
-        <Indicateur libelle="Performance" valeur={rendement !== null ? pctSigne(rendement) : "–"} ton={rendement !== null ? ton(rendement) : undefined}
-          detail={pf ? `Résultat total : ${montantSigne(pf.pnl_total)}` : undefined}
-          explication="Évolution de la valeur totale par rapport au capital initial." />
-        <Indicateur libelle="Réalisé" valeur={pf ? `${fleche(pf.pnl_realise)}${montantSigne(pf.pnl_realise)}` : "–"} ton={pf ? ton(pf.pnl_realise) : undefined}
-          explication="Gains et pertes déjà encaissés par vos ventes." />
-        <Indicateur libelle="Latent" valeur={pf ? `${fleche(pf.pnl_latent)}${montantSigne(pf.pnl_latent)}` : "–"} ton={pf ? ton(pf.pnl_latent) : undefined}
-          explication="Gains et pertes sur ce que vous détenez encore : ils peuvent encore changer." />
-        <Indicateur libelle="Liquidités" valeur={pf ? montant(pf.cash) : "–"} detail={pf ? `Frais payés : ${montant(pf.frais_cumules)}` : undefined}
-          explication="L'argent non investi, disponible pour acheter." />
-      </section>
+      <div className="kpis-conteneur">
+        <section className="kpis kpis-portefeuille" aria-label="Résumé du portefeuille">
+          <Indicateur grand libelle="Valeur du portefeuille" valeur={pf ? montant(pf.equity) : "–"} unite="USD"
+            detail={pf ? `Capital de départ : ${montant(pf.capital_initial)} USD` : undefined}
+            explication="Liquidités plus valeur de toutes vos positions au prix actuel.">
+            {hist && hist.points.length >= 2 && <MiniCourbe valeurs={hist.points.map((x) => x.equity)} />}
+          </Indicateur>
+          <Indicateur libelle="Valeur des positions" valeur={pf ? montant(pf.equity - pf.cash) : "–"} unite="USD"
+            detail={pf && pf.equity ? `${pct((pf.equity - pf.cash) / pf.equity, 0)} du portefeuille` : undefined}
+            explication="Ce que valent vos actifs au prix actuel : valeur du portefeuille moins les liquidités." />
+          <Indicateur libelle="Liquidités" valeur={pf ? montant(pf.cash) : "–"} unite="USD"
+            detail={pf && pf.equity ? `${pct(pf.cash / pf.equity, 0)} du portefeuille` : undefined}
+            explication="L'argent non investi, disponible pour acheter." />
+          <Indicateur libelle="Performance" valeur={rendement !== null ? `${fleche(rendement)}${pctSigne(rendement)}` : "–"} ton={rendement !== null ? ton(rendement) : undefined}
+            detail={pf ? <>Résultat total : {montantSigne(pf.pnl_total)} USD<br />dont frais {montantSigne(-pf.frais_cumules)} USD</> : undefined}
+            infobulle={{ simple: "De combien la valeur de votre portefeuille a monté ou baissé depuis le départ, frais compris.",
+              formule: "Performance = Résultat total / Capital de départ ; Résultat total = Réalisé + Latent − Frais" }} />
+          <Indicateur libelle="Réalisé" valeur={pf ? `${fleche(pf.pnl_realise)}${montantSigne(pf.pnl_realise)}` : "–"} unite="USD" ton={pf ? ton(pf.pnl_realise) : undefined}
+            infobulle={{ simple: "Gains et pertes déjà encaissés par vos ventes (avant frais).",
+              formule: "Réalisé = Σ (prix de vente − prix de revient moyen) × quantité vendue" }} />
+          <Indicateur libelle="Latent" valeur={pf ? `${fleche(pf.pnl_latent)}${montantSigne(pf.pnl_latent)}` : "–"} unite="USD" ton={pf ? ton(pf.pnl_latent) : undefined}
+            infobulle={{ simple: "Ce que vous gagneriez ou perdriez en vendant tout maintenant : cela peut encore changer.",
+              formule: "Latent = Σ (prix actuel − prix de revient moyen) × quantité détenue" }} />
+          <Indicateur libelle="Frais payés" valeur={pf ? `${fleche(-pf.frais_cumules)}${montantSigne(-pf.frais_cumules)}` : "–"} unite="USD" ton={pf && pf.frais_cumules > 0 ? "perte" : undefined}
+            infobulle={{ simple: "Les commissions payées à chaque achat et à chaque vente : elles réduisent toujours le résultat.",
+              formule: "Frais = Σ taux de frais × |prix| × quantité, pour chaque exécution" }} />
+        </section>
+      </div>
 
       <div className="grille-courbe">
         <section className="panneau">

@@ -227,3 +227,51 @@ lignes de tendance, retracements de Fibonacci. Tracé manuel : ligne horizontale
    bougies suivantes sont connues ; les bougies s'arrêtent à l'instant simulé.
 3. **Une cassure veut-elle dire qu'il faut acheter ?** Non : c'est un signal possible, souvent démenti (fausse cassure) ;
    l'interface montre ce que le cours a fait ensuite pour en juger.
+
+---
+
+## Cartes de synthèse du portefeuille (cahier, sections 3 et 16)
+
+**Branche :** `feature/portefeuille-cartes` (depuis `integration/demo`)
+
+### Le concept en mots simples
+
+Sept cartes résument le portefeuille : valeur totale (avec une mini-courbe), valeur des positions, liquidités,
+performance, gains et pertes réalisés, latents, frais payés. Chaque montant porte son unité (USD), un signe + ou −,
+une couleur ET une flèche (la couleur n'est jamais la seule information). Un bouton (i), utilisable au clavier, explique
+Performance, Réalisé, Latent et Frais : une phrase simple en mode Apprenant, la formule en mode Trader.
+
+### Les formules (USD)
+
+- Valeur des positions = valeur du portefeuille − liquidités.
+- Résultat total = valeur du portefeuille − capital de départ = Réalisé + Latent − Frais (identité vérifiée par un test).
+- Performance = Résultat total / Capital de départ.
+- Réalisé = Σ (prix de vente − prix de revient moyen) × quantité vendue ; Latent = Σ (prix actuel − prix de revient moyen) × quantité.
+- Pourquoi l'identité tient : le coût restant des positions est Σ achats − Σ (prix de revient × quantités vendues) ;
+  en l'ajoutant au cash (capital − achats + ventes − frais) et au latent, on retrouve capital + réalisé + latent − frais.
+
+### Où c'est dans le code
+
+- `frontend/src/components/PagePortefeuille.tsx` : rangée de cartes, `MiniCourbe`.
+- `frontend/src/components/Indicateur.tsx` : props `unite`, `infobulle`, `children` (facultatives, les autres pages ne changent pas).
+- `frontend/src/app/globals.css` : section « cartes de synthèse du portefeuille » (grille en requêtes de conteneur,
+  taille fluide `clamp(…, 10cqi, …)`, chiffres tabulaires, fond translucide flouté).
+- `backend/tests/test_identite_resultat.py` : identité vérifiée après achat, vente partielle, rachat et passage du temps.
+
+### Démonstration
+
+1. Page **Portefeuille** : 7 cartes en 4 colonnes sur grand écran, 2 sur tablette, 1 sur mobile, sans carte isolée.
+2. Survoler ou atteindre au clavier (Tab) le bouton (i) de « Performance » : phrase simple en mode Apprenant ; basculer
+   en mode Trader : la formule apparaît.
+3. Après quelques achats et ventes : vérifier à la main que Réalisé + Latent − Frais = Résultat total (sous Performance).
+4. Réduire la fenêtre : le montant de la grande carte rétrécit au lieu d'être coupé.
+
+### Questions d'examinateur
+
+1. **Le réalisé inclut-il les frais ?** Non : il est hors frais, d'où la carte « Frais payés » et la ligne
+   « dont frais » sous la performance ; le résultat total, lui, les inclut.
+2. **Pourquoi une grille à 1, 2 ou 4 colonnes et pas un simple auto-fit ?** Avec 7 cartes dont une double (8 cases),
+   un auto-fit libre peut produire 3, 5 ou 6 colonnes et laisser une carte seule sur sa ligne ; 1, 2 ou 4 colonnes
+   divisent toujours 8.
+3. **Comment garantissez-vous le contraste sur le fond animé ?** Le fond des cartes reste opaque à 84 % avec un flou
+   d'arrière-plan ; les couleurs de texte sont les jetons du thème, au-dessus du ratio AA (4,5:1) dans les deux thèmes.
