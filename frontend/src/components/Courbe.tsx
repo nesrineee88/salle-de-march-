@@ -11,6 +11,8 @@ interface Props {
   hauteur?: number;
   /** Affiche la liste des valeurs en tableau, pour ceux qui ne peuvent pas lire la courbe. */
   tableau?: boolean;
+  /** Nom du point de départ commun, quand on n'affiche qu'une période (« la valeur au début de la période »). */
+  libelleDepart?: string;
 }
 
 const MARGE = { haut: 12, droite: 16, bas: 24, gauche: 64 };
@@ -35,7 +37,7 @@ function compact(n: number): string {
 }
 
 /** Courbe de valeur du portefeuille (trait plein) comparée à un indice de référence (trait gris). */
-export default function Courbe({ points, capitalInitial, nomReference, hauteur = 280, tableau = true }: Props) {
+export default function Courbe({ points, capitalInitial, nomReference, hauteur = 280, tableau = true, libelleDepart = "du capital initial" }: Props) {
   const zone = useRef<HTMLDivElement>(null);
   const [largeur, setLargeur] = useState(640);
   const [survol, setSurvol] = useState<number | null>(null);
@@ -120,7 +122,7 @@ export default function Courbe({ points, capitalInitial, nomReference, hauteur =
       <figcaption className="courbe-legende">
         <span><i className="cle cle-pf" aria-hidden="true" />Votre portefeuille</span>
         {g.reference && <span><i className="cle cle-ref" aria-hidden="true" />{nomReference}, au même capital de départ</span>}
-        <span className="discret">Les deux courbes partent du capital initial ({montant(capitalInitial)}).</span>
+        <span className="discret">Les deux courbes partent {libelleDepart} ({montant(capitalInitial)} USD).</span>
       </figcaption>
       <div ref={zone} className="courbe-zone" style={{ height: hauteur }}>
         <svg
