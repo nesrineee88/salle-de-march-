@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { ouvrirActif, variationCotation } from "@/lib/actif";
 import { NOMS_CLASSES, prix, variation } from "@/lib/format";
-import { NAVIGATION } from "@/lib/navigation";
+import { pagesNavigation } from "@/lib/navigation";
 import { useMarche } from "./Contexte";
 
 type Resultat =
@@ -28,8 +28,7 @@ export default function Recherche({ ouverte, fermer }: { ouverte: boolean; ferme
 
   const resultats = useMemo<Resultat[]>(() => {
     const t = normaliser(q.trim());
-    const pages: Resultat[] = NAVIGATION.flatMap((e) => ("liens" in e && e.liens ? e.liens : e.href ? [e as { href: string; libelle: string }] : []))
-      .concat(utilisateur.role === "admin" ? [{ href: "/admin", libelle: "Administration" }] : [])
+    const pages: Resultat[] = pagesNavigation(utilisateur.role)
       .map((l) => ({ type: "page" as const, cle: l.href, libelle: l.libelle, detail: "Page", href: l.href }));
     const cot = new Map((inst?.cotations ?? []).map((c) => [c.symbole, c]));
     const lesActifs: Resultat[] = actifs.filter((a) => cot.has(a.symbole)).map((a) => {

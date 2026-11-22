@@ -14,3 +14,15 @@ data/clean/*.csv
 *.sqlite3
 .env.local
 data/utilisateurs.db.sauvegarde
+
+# fichiers générés, à ne jamais ajouter
+frontend/AGENTS.md
+frontend/tsconfig.tsbuildinfo
+data/raw/banques/
+
+# documents internes : le dépôt est public
+partage-prive/
+docs/plan/
+docs/AUDIT_*
+docs/BILAN_PROJET.md
+docs/Plan_Amelioration_*

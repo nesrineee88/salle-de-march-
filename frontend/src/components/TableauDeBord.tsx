@@ -1,204 +1,207 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { dateCourte, montant, montantSigne, pct, pctSigne, prix, variation } from "@/lib/format";
+import { useEffect, useMemo, useState } from "react";
+import { symboleCourt } from "@/lib/actif";
+import { dateCourte, entier, montantSigne, nombre, pctSigne, signe } from "@/lib/format";
 import { useLecture } from "@/lib/hooks";
-import { REPERES } from "@/lib/reperes";
-import type { Actif, Classe, CotationLigne, HistoriqueValeur, SyntheseTableau } from "@/lib/types";
+import { ouvrirDates } from "@/lib/temps";
+import type { HistoriqueValeur, SyntheseTableau } from "@/lib/types";
 import { useMarche } from "./Contexte";
-import Courbe from "./Courbe";
-import { DonutRepartition } from "./GraphiquesPortefeuille";
-import Indicateur from "./Indicateur";
-import { ActiviteRecente, ActualitesImportantes, PanneauAlertes, PanneauRisque } from "./SyntheseTableau";
+import { ASurveiller, ContreReference, Mouvements, Positions, References, Repartition, Risque, sens } from "./dashboard/Blocs";
+import CourbeValeur from "./dashboard/CourbeValeur";
+import Explication, { Info, type Sujet } from "./dashboard/Explication";
 
-const MARCHES: { classe: Classe; titre: string; href: string }[] = [
-  { classe: "action", titre: "Actions", href: "/actions" },
-  { classe: "crypto", titre: "Cryptomonnaies", href: "/crypto" },
-  { classe: "matiere", titre: "Matières premières", href: "/matieres" },
-];
+const PERIODES = [
+  { cle: "1m", libelle: "1 M", jours: 31 },
+  { cle: "3m", libelle: "3 M", jours: 92 },
+  { cle: "6m", libelle: "6 M", jours: 183 },
+  { cle: "tout", libelle: "Depuis le début", jours: Infinity },
+] as const;
+type Periode = (typeof PERIODES)[number]["cle"];
 
-function variationDe(c: CotationLigne): number | null {
-  const base = c.reference ?? c.derniere_cloture;
-  return base ? (c.prix - base) / Math.abs(base) : null;
-}
-
-function Mouvements({ titre, href, lignes }: { titre: string; href: string; lignes: { actif: Actif; c: CotationLigne; v: number }[] }) {
-  const tri = [...lignes].sort((a, b) => b.v - a.v);
-  const hausses = tri.slice(0, 3);
-  const baisses = tri.slice(-3).reverse().filter((l) => !hausses.includes(l));
-  const ligne = (l: { actif: Actif; c: CotationLigne; v: number }) => (
-    <li key={l.actif.symbole}>
-      <Link href={`${href}`} className="mouvement">
-        <span><strong>{l.actif.symbole}</strong> <small>{l.actif.nom}</small></span>
-        <span className="mouvement-droite">{prix(l.c.prix)} <small className={l.v > 0 ? "gain" : l.v < 0 ? "perte" : ""}>{l.v > 0 ? "▲ " : l.v < 0 ? "▼ " : ""}{variation(l.v)}</small></span>
-      </Link>
-    </li>
-  );
-  return (
-    <section className="panneau">
-      <header className="panneau-tete"><h2>{titre}</h2><Link href={href} className="lien-discret">Ouvrir le marché →</Link></header>
-      {lignes.length === 0 ? <p className="vide">Pas de cotation à cette date.</p> : (
-        <>
-          <p className="sous-titre">Plus fortes hausses</p>
-          <ul>{hausses.map(ligne)}</ul>
-          {baisses.length > 0 && (<><p className="sous-titre">Plus fortes baisses</p><ul>{baisses.map(ligne)}</ul></>)}
-        </>
-      )}
-    </section>
-  );
-}
+const CLE_REFERENCE = "sdm.reference";
+const montantRond = (v: number) => `${signe(Math.abs(v) < 0.5 ? 0 : v)}${entier(Math.abs(v))}`;
 
 export default function TableauDeBord() {
-  const { utilisateur, inst, actifs, pf, execs, ordres, aller, mode, setMode } = useMarche();
-  const { donnees: hist } = useLecture<HistoriqueValeur>("/api/v1/portefeuille/historique", 6000);
-  // Synthèse calculée côté serveur (niveau de risque, alertes, répartition) : relue toutes les 6 s, jamais recalculée à chaque tick.
-  const { donnees: synthese, erreur: erreurSynthese } = useLecture<SyntheseTableau>("/api/v1/tableau-de-bord", 6000);
-  const pro = mode === "trader";
+  const { utilisateur, inst, actifs, pf, ordres, execs } = useMarche();
+  const [choix, setChoix] = useState<string | null>(null);
+  const [periode, setPeriode] = useState<Periode>("tout");
+  const [sujet, setSujet] = useState<Sujet | null>(null);
 
-  const parClasse = useMemo(() => {
-    const parSymbole = new Map(actifs.map((a) => [a.symbole, a]));
-    const out: Record<string, { actif: Actif; c: CotationLigne; v: number }[]> = {};
-    for (const c of inst?.cotations ?? []) {
-      const a = parSymbole.get(c.symbole);
-      const v = variationDe(c);
-      if (!a || v === null || !a.tradable) continue;
-      (out[a.classe] ??= []).push({ actif: a, c, v });
-    }
-    return out;
-  }, [actifs, inst]);
+  useEffect(() => {
+    try { setChoix(localStorage.getItem(CLE_REFERENCE)); } catch { /* stockage indisponible */ }
+  }, []);
 
-  const indices = (inst?.cotations ?? []).filter((c) => c.symbole === "^GSPC" || c.symbole === "^VIX");
-  const rendement = pf && pf.capital_initial ? pf.pnl_total / pf.capital_initial : null;
-  const ordresOuverts = ordres.filter((o) => o.statut === "en_attente" || o.statut === "partiel");
-  const aucunePosition = !!pf && pf.positions.length === 0 && execs.length === 0;
-  const top = pf ? [...pf.positions].sort((a, b) => b.valeur - a.valeur).slice(0, 5) : [];
-  const instantDate = inst?.instant.slice(0, 10) ?? "";
+  // Synthèse calculée côté serveur (rendement, références, risque) : jamais recalculée ici.
+  const { donnees: synthese, erreur, relire } = useLecture<SyntheseTableau>("/api/v1/tableau-de-bord", 6000);
+  const references = synthese?.suivi?.references ?? [];
+  const reference = references.find((r) => r.symbole === choix) ?? references[0];
+  const chemin = `/api/v1/portefeuille/historique${reference ? `?reference=${encodeURIComponent(reference.symbole)}` : ""}`;
+  const { donnees: hist, relire: relireHist } = useLecture<HistoriqueValeur>(chemin, 6000);
+
+  // Après un saut de date, un ordre ou un changement de régime : relecture immédiate.
+  const jour = inst?.instant.slice(0, 10);
+  const direct = inst?.direct ?? false;
+  useEffect(() => {
+    if (!jour) return;
+    void relire(); void relireHist();
+  }, [jour, direct, execs.length, relire, relireHist]);
+
+  const parSymbole = useMemo(() => new Map(actifs.map((a) => [a.symbole, a])), [actifs]);
+  const points = useMemo(() => {
+    const tous = hist?.points ?? [];
+    const p = PERIODES.find((x) => x.cle === periode)!;
+    if (tous.length === 0 || p.jours === Infinity) return tous;
+    const seuil = Date.parse(tous[tous.length - 1].jour) - p.jours * 86_400_000;
+    return tous.filter((x) => Date.parse(x.jour) >= seuil);
+  }, [hist, periode]);
+
+  if (synthese && !synthese.suivi) {
+    return (
+      <main className="dash">
+        <p className="seance-note" role="alert">Le serveur Python utilise encore l’ancienne version. Arrêtez-le, relancez-le, puis rechargez cette page.</p>
+      </main>
+    );
+  }
+  if (!synthese || !pf) {
+    return <main className="dash">{erreur ? <p className="erreur" role="alert">{erreur}</p> : <p className="chargement" role="status">Chargement du dashboard…</p>}</main>;
+  }
+
+  const { suivi, niveau_risque, risque } = synthese;
+  const pire = [...pf.positions].sort((a, b) => a.pnl_latent - b.pnl_latent)[0];
+  const ecart = reference?.ecart_points ?? null;
+  const nomRef = (reference?.nom ?? "Référence").replace(/ /g, "\u00a0");
+  const reserve = pf.cash - pf.cash_disponible;
+
+  function choisir(symbole: string) {
+    setChoix(symbole);
+    try { localStorage.setItem(CLE_REFERENCE, symbole); } catch { /* le choix ne sera pas mémorisé */ }
+  }
 
   return (
-    <main className="page">
-      <header className="page-tete">
-        <div>
-          <h1>Bonjour {utilisateur.nom}</h1>
-          <p className="aide">Votre vue d&apos;ensemble : la valeur de votre portefeuille, son niveau de risque, vos alertes et les marchés du jour.</p>
-        </div>
-        <div className="choix-vue" role="group" aria-label="Choix de la vue du tableau de bord">
-          <button type="button" aria-pressed={!pro} onClick={() => setMode("apprenant")}>Vue simple</button>
-          <button type="button" aria-pressed={pro} onClick={() => setMode("trader")}>Vue professionnelle</button>
-        </div>
-      </header>
+    <main className="dash">
+      <h1 className="sr-only">Dashboard de {utilisateur.nom}</h1>
 
-      {(!utilisateur.profil_risque || aucunePosition) && (
-        <section className="panneau panneau-depart" aria-label="Pour commencer">
-          <h2>Pour commencer</h2>
-          <ol className="etapes">
-            <li data-fait={!!utilisateur.profil_risque}>
-              <span><strong>Répondez au questionnaire de risque.</strong> Il fixe la perte maximale que vous acceptez ; le simulateur la compare ensuite à vos portefeuilles.</span>
-              {!utilisateur.profil_risque && <Link className="btn" href="/compte#profil">Répondre</Link>}
-            </li>
-            <li data-fait={!aucunePosition}>
-              <span><strong>Passez votre premier ordre.</strong> Ouvrez un marché, choisissez un actif et achetez-en quelques-uns avec votre capital virtuel.</span>
-              {aucunePosition && <Link className="btn" href="/actions">Ouvrir les actions</Link>}
-            </li>
-            <li data-fait={false}>
-              <span><strong>Faites avancer le temps.</strong> Appuyez sur « Lancer » en haut de page : une semaine passe en une heure. Regardez ensuite votre portefeuille évoluer.</span>
-            </li>
-          </ol>
-        </section>
+      {reference && <References references={references} choix={reference} choisir={choisir} />}
+
+      {suivi.operations_futures && (
+        <div className="seance-note seance-note-action" role="note">
+          <p>Ce portefeuille contient des opérations postérieures à la date affichée, héritées des anciennes règles (retour en arrière, ordres en Direct). Ses chiffres ne sont pas fiables : recommencez à une date.</p>
+          <button type="button" className="btn" onClick={ouvrirDates}>Recommencer</button>
+        </div>
       )}
 
-      <section className="kpis" aria-label="Résumé du portefeuille">
-        <Indicateur grand libelle="Valeur du portefeuille" valeur={pf ? montant(pf.equity) : "–"}
-          detail={pf ? `Capital de départ : ${montant(pf.capital_initial)}` : undefined}
-          explication="C'est ce que vaudrait tout votre portefeuille si vous vendiez tout maintenant : liquidités plus positions." />
-        <Indicateur libelle="Gain ou perte depuis le départ" valeur={pf ? `${pf.pnl_total > 0 ? "▲ " : pf.pnl_total < 0 ? "▼ " : ""}${montantSigne(pf.pnl_total)}` : "–"}
-          ton={pf && pf.pnl_total !== 0 ? (pf.pnl_total > 0 ? "gain" : "perte") : undefined} detail={rendement !== null ? pctSigne(rendement) : undefined}
-          explication="La différence entre la valeur actuelle et votre capital de départ, frais compris." />
-        <Indicateur libelle="Liquidités" valeur={pf ? montant(pf.cash) : "–"} detail={pf && pf.equity ? `${pct(pf.cash / pf.equity, 0)} du portefeuille` : undefined}
-          explication="L'argent non investi. Il sert à acheter et amortit les baisses." />
-        <Indicateur libelle="Positions ouvertes" valeur={pf ? String(pf.positions.length) : "–"} detail={ordresOuverts.length > 0 ? `${ordresOuverts.length} ordre(s) en attente` : undefined}
-          explication="Le nombre d'actifs que vous détenez en ce moment." />
+      <section className="dash-hero">
+        <div className="dash-recit">
+          <p className="discret">Votre portefeuille, au {dateCourte(synthese.instant)}</p>
+          <p className="dash-valeur">{entier(suivi.valeur)}<small>USD <Info sujet="valeur" ouvrir={setSujet} /></small></p>
+          <div className="dash-retour">
+            <small>Total return depuis le début <Info sujet="retour" ouvrir={setSujet} /></small>
+            <strong className={sens(suivi.rendement_total)}>
+              <span aria-hidden="true">{sens(suivi.rendement_total) === "gain" ? "▲ " : sens(suivi.rendement_total) === "perte" ? "▼ " : ""}</span>
+              {pctSigne(suivi.rendement_total)}
+            </strong>
+            <span>{suivi.a_commence ? `${montantRond(suivi.gain)} USD, depuis le ${dateCourte(suivi.debut)}` : "Il démarre à votre première transaction"}</span>
+          </div>
+          {suivi.a_commence ? (
+            <p className="dash-phrase">
+              {ecart === null ? null : Math.abs(ecart) < 0.05 ? <>Vous faites jeu égal avec {nomRef}. </> : (
+                <>Vous faites <strong>{nombre(Math.abs(ecart), 1)} points {ecart > 0 ? "de mieux" : "de moins"}</strong> que {nomRef}. </>
+              )}
+              {pire && pire.pnl_latent < -0.5 && (
+                <>{parSymbole.get(pire.symbole)?.nom ?? symboleCourt(pire.symbole)} est votre plus grosse perte : <strong>{montantRond(pire.pnl_latent)} USD</strong>.</>
+              )}
+            </p>
+          ) : (
+            <ol className="dash-depart">
+              <li>Choisissez la date en haut de l’écran.</li>
+              <li>Achetez un premier actif.</li>
+              <li>Lancez le temps avec le bouton ▶ en bas.</li>
+            </ol>
+          )}
+          <div className="dash-actions">
+            <Link className="btn btn-principal" href="/marche">Passer un ordre</Link>
+            {utilisateur.profil_risque
+              ? <button type="button" className="btn" onClick={ouvrirDates}>Changer la date</button>
+              : <Link className="btn" href="/compte#profil">Mon profil</Link>}
+          </div>
+        </div>
+        <div className="dash-hero-courbe">
+          <div className="dash-tete">
+            <p className="dash-cle">
+              <span><i className="cle-vous" />Votre portefeuille</span>
+              <span><i className="cle-reference" />{nomRef}{reference?.dividendes ? ", dividendes inclus" : ""}, même départ</span>
+            </p>
+            <div className="seance-segments" role="group" aria-label="Période">
+              {PERIODES.map((p) => <button key={p.cle} type="button" aria-pressed={periode === p.cle} onClick={() => setPeriode(p.cle)}>{p.libelle}</button>)}
+            </div>
+          </div>
+          <CourbeValeur points={points} nomReference={nomRef} futur={!direct} />
+        </div>
       </section>
 
-      <div className="grille-2">
-        <PanneauRisque synthese={synthese} erreur={erreurSynthese} mode={mode} />
-        <section className="panneau" aria-labelledby="titre-repartition-tableau">
-          <header className="panneau-tete"><h2 id="titre-repartition-tableau">Répartition</h2><Link href="/portefeuille" className="lien-discret">Diversification →</Link></header>
-          {synthese ? <DonutRepartition donnees={synthese.repartition_detail} /> : <p className="chargement">Chargement…</p>}
-          {!pro && <p className="aide">Survolez une part pour voir sa valeur. Un portefeuille réparti sur plusieurs secteurs et classes d&apos;actifs souffre moins d&apos;une crise touchant un seul secteur.</p>}
-        </section>
-      </div>
-
-      <div className="grille-2">
-        <section className="panneau">
-          <header className="panneau-tete"><h2>Valeur du portefeuille</h2><Link href="/portefeuille" className="lien-discret">Analyse complète →</Link></header>
-          {hist ? <Courbe points={hist.points} capitalInitial={hist.capital_initial} nomReference="S&P 500" hauteur={230} tableau={false} /> : <p className="vide">Chargement…</p>}
-        </section>
-
-        <section className="panneau">
-          <header className="panneau-tete"><h2>Indices de référence</h2></header>
-          <ul className="liste-indices">
-            {indices.map((c) => {
-              const v = variationDe(c);
-              const nom = c.symbole === "^GSPC" ? "S&P 500" : "VIX";
-              return (
-                <li key={c.symbole}>
-                  <p><strong>{nom}</strong> <small className="discret">{c.symbole === "^VIX" ? "peur du marché" : "500 grandes entreprises américaines"}</small></p>
-                  <p className="indice-prix">{prix(c.prix)} <small className={v !== null && v > 0 ? "gain" : v !== null && v < 0 ? "perte" : ""}>{v !== null && (v > 0 ? "▲ " : v < 0 ? "▼ " : "")}{variation(v)}</small></p>
-                </li>
-              );
-            })}
-          </ul>
-          {mode === "apprenant" && <p className="aide">Le VIX monte quand les investisseurs ont peur : il dépasse souvent 30 dans les krachs.</p>}
-        </section>
-      </div>
-
-      <div className="grille-2">
-        <PanneauAlertes synthese={synthese} mode={mode} />
-        <ActualitesImportantes />
-      </div>
-
-      {pro && (
-        <div className="grille-3">
-          {MARCHES.map((m) => <Mouvements key={m.classe} titre={m.titre} href={m.href} lignes={parClasse[m.classe] ?? []} />)}
+      <dl className="dash-faits">
+        <div>
+          <dt>Résultat du jour</dt>
+          <dd className={sens(Math.round(suivi.resultat_jour))}>{montantRond(suivi.resultat_jour)}</dd>
+          <dd className="dash-fait-detail">USD, depuis hier soir</dd>
         </div>
-      )}
+        <div>
+          <dt>Disponible</dt>
+          <dd>{entier(pf.cash_disponible)}</dd>
+          <dd className="dash-fait-detail">{reserve > 0.5 ? `${entier(reserve)} réservés par vos ordres` : "USD à investir"}</dd>
+        </div>
+        <div>
+          <dt>{nomRef}, depuis le début</dt>
+          <dd className={sens(reference?.depuis_debut)}>{suivi.a_commence ? pctSigne(reference?.depuis_debut) : "–"}</dd>
+          <dd className="dash-fait-detail">{ecart !== null && suivi.a_commence ? `Écart : ${montantSigne(ecart)} points` : "Mêmes dates que vous"}</dd>
+        </div>
+        <div>
+          <dt>Perte d’un mauvais jour <Info sujet="var" ouvrir={setSujet} /></dt>
+          <dd>{risque ? entier(risque.var_montant) : "–"}</dd>
+          <dd className="dash-fait-detail">USD, 1 jour sur 20</dd>
+        </div>
+      </dl>
 
-      <div className="grille-2">
-        {pro ? (
-        <section className="panneau">
-          <header className="panneau-tete"><h2>Mes plus grosses positions</h2><Link href="/portefeuille" className="lien-discret">Tout voir →</Link></header>
-          {top.length === 0 ? <p className="vide">Aucune position pour le moment.</p> : (
-            <table className="tableau tableau-compact">
-              <thead><tr><th>Actif</th><th>Valeur</th><th>Gain ou perte</th><th>Poids</th></tr></thead>
-              <tbody>
-                {top.map((p) => (
-                  <tr key={p.symbole}>
-                    <td>{p.symbole}</td><td>{montant(p.valeur)}</td>
-                    <td className={p.pnl_latent > 0 ? "gain" : p.pnl_latent < 0 ? "perte" : ""}>{p.pnl_latent > 0 ? "▲ " : p.pnl_latent < 0 ? "▼ " : ""}{montantSigne(p.pnl_latent)}</td>
-                    <td>{pct(p.poids)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      <div className="dash-grille">
+        <section className="dash-panneau dash-c7">
+          <header className="dash-tete">
+            <h2>Niveau de risque <Info sujet="risque" ouvrir={setSujet} /></h2>
+            <button type="button" className="btn btn-mini" onClick={() => setSujet("risque")}>Voir le calcul</button>
+          </header>
+          <Risque risque={niveau_risque} />
         </section>
-        ) : <ActiviteRecente execs={execs} synthese={synthese} />}
 
-        <section className="panneau">
-          <header className="panneau-tete"><h2>Machine à remonter le temps</h2></header>
-          <p className="aide">Sautez directement à un moment marquant de l&apos;histoire des marchés et voyez comment votre portefeuille aurait réagi.</p>
-          <ul className="reperes">
-            {REPERES.map((r) => (
-              <li key={r.date}>
-                <div><strong>{r.titre}</strong><p className="discret">{dateCourte(`${r.date}T00:00:00`)} · {r.explication}</p></div>
-                <button className="btn" onClick={() => void aller(`${r.date}T17:00:00`)} disabled={instantDate === r.date}>Y aller</button>
-              </li>
-            ))}
-          </ul>
+        <section className="dash-panneau dash-c5">
+          <header className="dash-tete"><h2>Vous contre la référence</h2></header>
+          {suivi.a_commence && reference
+            ? <ContreReference suivi={suivi} reference={reference} pireBaisse={synthese.performance.drawdown_max} />
+            : <p className="dash-vide">La comparaison démarre à votre première transaction, le même jour pour vous et pour l’indice.</p>}
+        </section>
+
+        <section className="dash-panneau dash-c5">
+          <header className="dash-tete"><h2>Vos positions</h2><Link className="btn btn-mini" href="/portefeuille">Tout voir</Link></header>
+          <Positions pf={pf} parSymbole={parSymbole} />
+        </section>
+
+        <section className="dash-panneau dash-c4">
+          <header className="dash-tete"><h2>À surveiller</h2></header>
+          <ASurveiller synthese={synthese} ordres={ordres} pf={pf} />
+        </section>
+
+        <section className="dash-panneau dash-c3">
+          <header className="dash-tete"><h2>Répartition</h2></header>
+          <Repartition lignes={synthese.repartition_detail.marche} />
+        </section>
+
+        <section className="dash-panneau dash-c12">
+          <header className="dash-tete"><h2>Le marché aujourd’hui</h2><Link className="btn btn-mini" href="/marche">Ouvrir la salle</Link></header>
+          <Mouvements lignes={synthese.mouvements} />
         </section>
       </div>
-      {pro && <ActiviteRecente execs={execs} synthese={synthese} />}
+
+      {sujet && <Explication sujet={sujet} synthese={synthese} cash={pf.cash} fermer={() => setSujet(null)} />}
     </main>
   );
 }

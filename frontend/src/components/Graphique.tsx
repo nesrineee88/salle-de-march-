@@ -5,9 +5,8 @@ import {
   CandlestickSeries, ColorType, createChart, createSeriesMarkers, HistogramSeries, LineSeries, LineStyle,
   type IChartApi, type IPriceLine, type ISeriesApi, type ISeriesMarkersPluginApi, type SeriesType, type Time, type UTCTimestamp,
 } from "lightweight-charts";
-import { couleurs } from "@/lib/indicateurs";
+import { COULEURS } from "@/lib/indicateurs";
 import type { Outil } from "@/lib/technique";
-import { useTheme } from "@/lib/theme";
 import type { Bougie, CleIndicateur, Dessin, ReponseBougies, Unite } from "@/lib/types";
 
 export type ModeTrace = "aucun" | "horizontal" | "tendance";
@@ -50,7 +49,7 @@ function couleursCss() {
   return { discret: v("--discret"), trait: v("--trait"), traitFort: v("--trait-fort"), gain: v("--gain"), perte: v("--perte"), accent: v("--accent"), texte: v("--texte"), ok: v("--ok") };
 }
 
-/** « #5baeff » + opacité → « rgba(91, 174, 255, 0.4) » (le canevas ne comprend pas toujours color-mix). */
+/** « #4fd1b0 » + opacité → « rgba(79, 209, 176, 0.4) » (le canevas ne comprend pas toujours color-mix). */
 function transparence(hex: string, alpha: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex);
   if (!m) return hex;
@@ -66,13 +65,10 @@ export default function Graphique({ bougies, symbole, unite = "1j", indicateurs 
   const serie = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumes = useRef<ISeriesApi<"Histogram"> | null>(null);
   const derniereCle = useRef<string | null>(null);
-  const theme = useTheme();
   const serieIndic = useRef<Map<string, ISeriesApi<SeriesType>>>(new Map());
   const reperes = useRef<{ lignes: IPriceLine[]; series: ISeriesApi<SeriesType>[]; marqueurs: ISeriesMarkersPluginApi<Time> | null }>({ lignes: [], series: [], marqueurs: null });
   const donneesRef = useRef({ bougies, indicateurs });
   donneesRef.current = { bougies, indicateurs };
-  const themeRef = useRef(theme);
-  themeRef.current = theme;
   const traceRef = useRef({ modeTrace, onDessin, premier: null as { t: number; p: number } | null });
   traceRef.current = { ...traceRef.current, modeTrace, onDessin };
   if (modeTrace !== "tendance") traceRef.current.premier = null;
@@ -82,7 +78,6 @@ export default function Graphique({ bougies, symbole, unite = "1j", indicateurs 
 
   /** Alimente les séries d'indicateurs (valeurs absentes sautées), alignées sur les bougies par leur indice. */
   function remplirIndicateurs() {
-    const COULEURS = couleurs(themeRef.current);
     const { bougies: b, indicateurs: d } = donneesRef.current;
     for (const [cle, s] of serieIndic.current) {
       const valeurs = d?.[cle];
@@ -173,7 +168,7 @@ export default function Graphique({ bougies, symbole, unite = "1j", indicateurs 
     volumes.current.setData(bougies.filter((b) => b.volume !== null).map((b) => ({
       time: temps(b.t), value: b.volume as number, color: transparence(b.close >= b.open ? v.gain : v.perte, 0.45),
     })));
-  }, [bougies, voirVolumes, theme]);
+  }, [bougies, voirVolumes]);
 
   // Apparence : les couleurs suivent le thème (sombre ou clair).
   useEffect(() => {
@@ -187,10 +182,10 @@ export default function Graphique({ bougies, symbole, unite = "1j", indicateurs 
       crosshair: { vertLine: { color: v.discret, labelBackgroundColor: v.traitFort }, horzLine: { color: v.discret, labelBackgroundColor: v.traitFort } },
     });
     b.applyOptions({ upColor: v.gain, downColor: v.perte, wickUpColor: v.gain, wickDownColor: v.perte });
-  }, [theme]);
+  }, []);
 
   // Repères : supports et résistances, cassures, tendances, Fibonacci, tracés manuels. Redessinés seulement s'ils changent.
-  const cleReperes = JSON.stringify([outils.filter((o) => o !== "volumes").sort(), niveaux, dessins, theme]);
+  const cleReperes = JSON.stringify([outils.filter((o) => o !== "volumes").sort(), niveaux, dessins]);
   useEffect(() => {
     const c = graphique.current, s = serie.current;
     if (!c || !s) return;
@@ -239,7 +234,6 @@ export default function Graphique({ bougies, symbole, unite = "1j", indicateurs 
   useEffect(() => {
     const c = graphique.current;
     if (!c) return;
-    const COULEURS = couleurs(theme);
     serieIndic.current.forEach((s) => c.removeSeries(s));
     serieIndic.current.clear();
     while (c.panes().length > 1) c.removePane(c.panes().length - 1);
@@ -281,7 +275,7 @@ export default function Graphique({ bougies, symbole, unite = "1j", indicateurs 
     remplirIndicateurs();
     return () => clearTimeout(minuteur);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cleChoix, theme]);
+  }, [cleChoix]);
 
   useEffect(() => { remplirIndicateurs(); }, [indicateurs]);  // eslint-disable-line react-hooks/exhaustive-deps
 

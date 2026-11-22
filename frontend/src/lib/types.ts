@@ -47,6 +47,7 @@ export interface Horloge {
 
 export interface Instantane {
   instant: string;
+  instant_compte?: string;       // date du portefeuille : figée pendant le Direct
   termine: boolean;
   horloge: Horloge;
   fenetre: { debut: string; fin: string };
@@ -106,6 +107,8 @@ export interface Position {
   valeur: number;
   pnl_latent: number;
   poids: number;
+  achetee_apres_t: boolean;
+  achetee_apres_t_le: string | null;
 }
 
 export interface Portefeuille {
@@ -173,7 +176,9 @@ export interface PointValeur {
 
 export interface HistoriqueValeur {
   points: PointValeur[];
-  benchmark: string;
+  benchmark: string | null;
+  benchmark_nom: string | null;
+  debut: string;                 // première transaction
   capital_initial: number;
 }
 
@@ -214,9 +219,12 @@ export interface Analyse {
   risque: {
     var: number; cvar: number; jours: number; niveau: number; var_montant: number; cvar_montant: number;
     ecart_type_jour: number | null;               // écart-type d'échantillon des rendements de séance
-    volatilite_annuelle_seances: number | null;   // écart-type × √252
+    volatilite_annuelle_seances: number | null;   // écart-type × √252 (√365 pour des cryptomonnaies seules)
+    seances_an?: number;
     distribution: Distribution | null;
   } | null;
+  jours_risque_disponibles: number;
+  jours_risque_minimum: number;
   beta: Beta | null;
   covariances: { symboles: string[]; matrice: number[][] } | null;
   concentration: { hhi: number; nb_effectif: number; plus_grosse_position: { symbole: string; part: number } } | null;
@@ -534,11 +542,42 @@ export interface StatsAdmin {
 export interface PerformanceAdmin { id: number; nom: string; email: string; role: string; actif: boolean; profil_risque: string | null; portefeuille: { rendement: number; drawdown: number; score: number; date_simulee: string; points: number; valeur: number } | null }
 
 // ----------------------------------------------------------------------------- tableau de bord (synthèse serveur)
-export type NiveauRisque = "aucun" | "faible" | "modere" | "eleve";
-export type CritereRisque =
-  | { critere: "var" | "baisse"; rang: 0 | 1 | 2; valeur: number }
-  | { critere: "concentration_position" | "concentration_secteur"; rang: 0 | 1 | 2; valeur: number; libelle: string }
-  | { critere: "profil"; rang: 0 | 1 | 2; valeur: number | null; tolerance: number | null };
+export type NiveauRisque = "aucun" | "incomplet" | "faible" | "modere" | "eleve";
+export type CleFamille = "volatilite" | "var" | "cvar" | "drawdown" | "concentration";
+export interface FamilleRisque {
+  cle: CleFamille;
+  poids: number;
+  seuil_modere: number;
+  seuil_eleve: number;
+  valeur: number | null;         // null : historique trop court
+  note: number | null;           // 0 à 100
+  rang: 0 | 1 | 2 | null;
+  points: number | null;         // note × poids
+  nature?: "position" | "secteur";
+  libelle?: string;
+}
+export interface ReferenceSuivi {
+  symbole: string;
+  nom: string;
+  dividendes: boolean;
+  niveau: number;
+  variation: number | null;
+  depuis_debut: number | null;
+  ecart_points: number | null;
+}
+export interface Suivi {
+  debut: string;
+  a_commence: boolean;
+  operations_futures: boolean;
+  jours: number;
+  capital_initial: number;
+  valeur: number;
+  gain: number;
+  rendement_total: number | null;
+  resultat_jour: number;
+  references: ReferenceSuivi[];
+}
+export interface Mouvement { symbole: string; nom: string; classe: Classe; prix: number; variation: number; serie: number[] }
 
 export interface AlerteRegle {
   id: number;
@@ -561,7 +600,19 @@ export interface RegleDeclenchee {
 
 export interface SyntheseTableau {
   instant: string;
-  niveau_risque: { niveau: NiveauRisque; criteres: CritereRisque[]; part_investie: number };
+  niveau_risque: {
+    niveau: NiveauRisque;
+    score: number | null;
+    niveau_pondere: "faible" | "modere" | "eleve" | null;
+    plancher: { niveau: "faible" | "modere" | "eleve"; cle: CleFamille; note: number; releve: boolean } | null;
+    familles: FamilleRisque[];
+    calcul_complet: boolean;
+    part_investie: number;
+    jours: number;
+    profil: { statut: Analyse["profil"]["statut"]; perte_actuelle: number | null; tolerance: number | null };
+  };
+  suivi: Suivi;
+  mouvements: Mouvement[];
   alertes: { surveillance: AlerteRegle[]; declenchees: RegleDeclenchee[] };
   repartition_detail: Analyse["repartition_detail"];
   risque: Analyse["risque"];

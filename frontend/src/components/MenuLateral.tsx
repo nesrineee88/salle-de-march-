@@ -2,91 +2,84 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Activity, BrainCircuit, Briefcase, Bitcoin, Calculator, FlaskConical, Gem, GraduationCap, LayoutDashboard, Newspaper,
-  PanelLeftClose, PanelLeftOpen, Settings, ShieldAlert, TrendingUp, UserRound, type LucideIcon,
-} from "lucide-react";
-import { NAVIGATION } from "@/lib/navigation";
-import { definirApparence, useApparence } from "@/lib/apparence";
+import { useState } from "react";
+import { BrainCircuit, CircleUserRound, LayoutDashboard, Newspaper, Settings, ShieldAlert, type LucideIcon } from "lucide-react";
+import { PRINCIPALES, SECONDAIRES, estActif, visiblesPour, type LienNav } from "@/lib/navigation";
 import { useMarche } from "./Contexte";
+import Dialogue from "./ui/Dialogue";
+import IconeSeance, { type NomIcone } from "./ui/IconeSeance";
+import { Logo } from "./ui/Logo";
 
+const TRACES: Record<string, NomIcone> = {
+  "/": "dashboard",
+  "/marche": "marche",
+  "/portefeuille": "portefeuille",
+  "/strategies": "analyse",
+  "/jeu": "jeu",
+  "/stress": "banque",
+  "/formation": "ecole",
+  "/actuariat": "bouclier",
+  "/xai": "xai",
+};
+/** Pages rangées sous « Plus », absentes du prototype. */
 const ICONES: Record<string, LucideIcon> = {
-  "/": LayoutDashboard,
-  "/actions": TrendingUp,
-  "/crypto": Bitcoin,
-  "/matieres": Gem,
-  "/portefeuille": Briefcase,
-  "/strategies": FlaskConical,
   "/actualites": Newspaper,
-  "/ia": BrainCircuit,
   "/credit": ShieldAlert,
-  "/stress": Activity,
-  "/actuariat": Calculator,
-  "/formation": GraduationCap,
-  "/compte": UserRound,
+  "/ia": BrainCircuit,
+  "/compte": CircleUserRound,
   "/admin": Settings,
 };
 
-interface Section { titre: string | null; liens: { href: string; libelle: string; description?: string }[] }
-
-/** Découpe la navigation en sections : les liens isolés forment une section sans titre, chaque groupe devient une section. */
-function sections(estAdmin: boolean): Section[] {
-  const res: Section[] = [];
-  let isoles: Section["liens"] = [];
-  const viderIsoles = () => { if (isoles.length) { res.push({ titre: null, liens: isoles }); isoles = []; } };
-  for (const e of NAVIGATION) {
-    if ("liens" in e && e.liens) { viderIsoles(); res.push({ titre: e.libelle, liens: e.liens }); }
-    else if (e.href) isoles.push({ href: e.href, libelle: e.libelle });
-  }
-  viderIsoles();
-  if (estAdmin) res.push({ titre: "Gestion", liens: [{ href: "/admin", libelle: "Administration" }] });
-  return res;
+function Icone({ href }: { href: string }) {
+  if (TRACES[href]) return <IconeSeance nom={TRACES[href]} />;
+  const Dessin = ICONES[href] ?? LayoutDashboard;
+  return <Dessin size={21} strokeWidth={1.7} aria-hidden="true" />;
 }
 
-export default function MenuLateral({ ouvertMobile, fermerMobile }: { ouvertMobile: boolean; fermerMobile: () => void }) {
+/** Rail à gauche sur ordinateur, barre du bas sur téléphone. */
+export default function MenuLateral() {
   const { utilisateur } = useMarche();
-  const { menuReplie } = useApparence();
   const chemin = usePathname();
-  const actif = (href: string) => (href === "/" ? chemin === "/" : chemin.startsWith(href));
-  const replie = menuReplie && !ouvertMobile;
+  const [plus, setPlus] = useState(false);
+  const secondaires = visiblesPour(SECONDAIRES, utilisateur.role);
+  const dansPlus = secondaires.some((l) => estActif(l, chemin));
+  const horsBarreMobile = PRINCIPALES.filter((l) => !l.mobile);
+  const cacheeMobile = horsBarreMobile.some((l) => estActif(l, chemin));
+
+  const entreePlus = (lien: LienNav, mobileSeulement: boolean) => {
+    return (
+      <Link key={lien.href} href={lien.href} className={mobileSeulement ? "mobile-seulement" : undefined}
+        aria-current={estActif(lien, chemin) ? "page" : undefined} onClick={() => setPlus(false)}>
+        <Icone href={lien.href} />
+        <span><strong>{lien.libelle}</strong><small>{lien.description}</small></span>
+      </Link>
+    );
+  };
 
   return (
-    <>
-      {ouvertMobile && <button type="button" className="menu-voile" aria-label="Fermer le menu" onClick={fermerMobile} />}
-      <nav className="menu-lateral" aria-label="Pages" data-replie={replie} data-mobile={ouvertMobile}>
-                <button type="button" className="menu-bascule-haut" onClick={() => definirApparence({ menuReplie: !menuReplie })}
-          aria-pressed={menuReplie} aria-label={menuReplie ? "Déplier le menu" : "Replier le menu"} title={menuReplie ? "Déplier le menu" : "Replier le menu"}>
-          {menuReplie ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
-          {!replie && <span>Réduire le menu</span>}
-        </button>
-        <div className="menu-lateral-liste">
-          {sections(utilisateur.role === "admin").map((s, i) => (
-            <section key={s.titre ?? `s${i}`} className="menu-section">
-              {s.titre && !replie && <h2 className="menu-section-titre">{s.titre}</h2>}
-              {s.titre && replie && <hr className="menu-section-trait" />}
-              <ul>
-                {s.liens.map((l) => {
-                  const Icone = ICONES[l.href] ?? LayoutDashboard;
-                  return (
-                    <li key={l.href}>
-                      <Link href={l.href} className="menu-lien" aria-current={actif(l.href) ? "page" : undefined}
-                        title={replie ? l.libelle : l.description} aria-label={replie ? l.libelle : undefined} onClick={fermerMobile}>
-                        <Icone size={18} aria-hidden="true" />
-                        {!replie && <span>{l.libelle}</span>}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
-        </div>
-        <button type="button" className="menu-lien menu-bascule-bas" onClick={() => definirApparence({ menuReplie: !menuReplie })}
-          aria-pressed={menuReplie} aria-label={menuReplie ? "Déplier le menu" : "Replier le menu"} title={menuReplie ? "Déplier le menu" : "Replier le menu"}>
-          {menuReplie ? <PanelLeftOpen size={18} aria-hidden="true" /> : <PanelLeftClose size={18} aria-hidden="true" />}
-          {!replie && <span>Replier</span>}
-        </button>
-      </nav>
-    </>
+    <nav className="seance-rail" aria-label="Navigation principale">
+      <Link href="/" className="seance-rail-logo" aria-label="Séance, dashboard"><Logo /></Link>
+      {PRINCIPALES.map((lien) => {
+        return (
+          <Link key={lien.href} href={lien.href} title={lien.description} className="seance-nav"
+            data-secondaire={!lien.mobile || undefined} aria-current={estActif(lien, chemin) ? "page" : undefined}>
+            <Icone href={lien.href} /><span>{lien.libelle}</span>
+          </Link>
+        );
+      })}
+      <button type="button" className="seance-nav seance-nav-plus" data-actif={dansPlus || undefined}
+        data-actif-mobile={cacheeMobile || undefined} aria-haspopup="dialog" onClick={() => setPlus(true)}>
+        <IconeSeance nom="plus" /><span>Plus</span>
+      </button>
+
+      {plus && (
+        <Dialogue titre="Plus de modules" fermer={() => setPlus(false)}>
+          <div className="seance-plus">
+            {horsBarreMobile.map((l) => entreePlus(l, true))}
+            {secondaires.map((l) => entreePlus(l, false))}
+          </div>
+        </Dialogue>
+      )}
+    </nav>
   );
 }

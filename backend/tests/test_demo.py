@@ -8,7 +8,7 @@ from pipeline.demo import generer_demo, serie_demo
 def test_demo_ecrit_toutes_les_series_et_le_marqueur(tmp_path):
     u = charger_univers(config.UNIVERS_YAML)
     marqueur = tmp_path / "DONNEES_SYNTHETIQUES.txt"
-    assert generer_demo(u, tmp_path, marqueur) == 43
+    assert generer_demo(u, tmp_path, marqueur) == 47
     assert marqueur.exists() and "PAS des prix réels" in marqueur.read_text(encoding="utf-8")
     df = pd.read_csv(tmp_path / "CL_F.csv", index_col="date", parse_dates=["date"])
     assert (df["high"] >= df[["open", "close"]].max(axis=1)).all() and (df["low"] <= df[["open", "close"]].min(axis=1)).all()

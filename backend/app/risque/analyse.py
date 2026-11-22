@@ -207,9 +207,11 @@ def analyser(valo: dict, historique: list[dict], series_prix: dict[str, pd.Serie
     correlations = None
     covariances = None
     beta = None
+    jours_risque_disponibles = 0
     if poids:
-        retours = ind.rendements_actifs({s: series_prix[s] for s in poids if s in series_prix})
+        retours = ind.rendements_actifs({s: series_prix[s] for s in poids if s in series_prix}, ind.SEANCES_RISQUE)
         serie = ind.rendements_portefeuille(poids, retours)
+        jours_risque_disponibles = int(serie.notna().sum())
         risque = ind.var_cvar(serie)
         if risque is None:
             avertissements.append(f"VaR et CVaR demandent au moins {ind.MIN_JOURS_VAR} jours d'historique commun aux actifs détenus.")
@@ -218,7 +220,10 @@ def analyser(valo: dict, historique: list[dict], series_prix: dict[str, pd.Serie
             risque["cvar_montant"] = risque["cvar"] * equity
             et = ind.ecart_type(serie)
             risque["ecart_type_jour"] = et
-            risque["volatilite_annuelle_seances"] = et * ind.SEANCES_AN ** 0.5 if et is not None else None
+            par_an = ind.seances_par_an(serie.index)
+            risque["seances_an"] = par_an
+            risque["volatilite_annuelle_seances"] = et * par_an ** 0.5 if et is not None else None
+            risque["drawdown_poids"] = ind.drawdown_rendements(serie)
             risque["distribution"] = ind.histogramme(serie)
         beta = _beta_portefeuille(serie, benchmark, nom_indice)
         if len(retours.columns) >= 2 and len(retours) >= ind.MIN_JOURS_VAR:
@@ -246,6 +251,8 @@ def analyser(valo: dict, historique: list[dict], series_prix: dict[str, pd.Serie
             **(stats or {"volatilite_annuelle": None, "rendement_annuel": None, "sharpe": None, "sortino": None}),
         },
         "risque": risque,
+        "jours_risque_disponibles": jours_risque_disponibles,
+        "jours_risque_minimum": ind.MIN_JOURS_VAR,
         "concentration": conc,
         "concentration_detail": conc_detail,
         "diversification": diversification,

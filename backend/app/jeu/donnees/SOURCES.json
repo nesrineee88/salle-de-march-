@@ -1,0 +1,51 @@
+{
+  "films": {
+    "covid": {
+      "source": "Yahoo Finance via yfinance, cours ajustés des dividendes",
+      "symboles": {
+        "actions": "SPY",
+        "banques": "KBE",
+        "brent": "BNO",
+        "or": "GLD",
+        "vix": "^VIX"
+      },
+      "periode": [
+        "2020-02-03",
+        "2020-08-31"
+      ],
+      "telecharge_le": "2026-11-22T15:39:14+00:00",
+      "sha256": "21e9fc621599d569146b3319b6f5d41863279b7cf0ff4fa749bda9cdc9d2b743"
+    },
+    "crypto": {
+      "source": "Yahoo Finance via yfinance, cours ajustés des dividendes",
+      "symboles": {
+        "btc": "BTC-USD",
+        "eth": "ETH-USD",
+        "sol": "SOL-USD",
+        "or": "GLD"
+      },
+      "periode": [
+        "2022-04-01",
+        "2022-12-30"
+      ],
+      "telecharge_le": "2026-11-22T15:39:15+00:00",
+      "sha256": "9b05e4351f88e154efe666886bd21f049f29364e3015f5235f1286c23691055c"
+    },
+    "2008": {
+      "source": "Yahoo Finance via yfinance, cours ajustés des dividendes",
+      "symboles": {
+        "actions": "SPY",
+        "banques": "KBE",
+        "or": "GLD",
+        "obligations": "TLT",
+        "vix": "^VIX"
+      },
+      "periode": [
+        "2008-08-01",
+        "2009-06-30"
+      ],
+      "telecharge_le": "2026-11-22T15:39:16+00:00",
+      "sha256": "3851c940496307e0db7a4e458e8b306413e6fde2c5d6d8d5e46192dc65c64e8b"
+    }
+  }
+}

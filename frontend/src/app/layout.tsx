@@ -4,20 +4,19 @@ import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
 import "./globals.css";
+import "./seance.css";
+import "./jeu.css";
+import "./xai.css";
 import Coquille from "@/components/Coquille";
-import { SCRIPT_APPARENCE, SCRIPT_THEME } from "@/lib/scripts-initiaux";
 
 export const metadata: Metadata = {
-  title: "Salle de marché",
-  description: "Simulateur de salle de marché : rejouez les marchés de 2018 à octobre 2026 avec de l'argent virtuel.",
+  title: "Séance",
+  description: "Simulateur de salle de marché : rejouez les marchés de 2019 à octobre 2026 avec de l'argent virtuel.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: SCRIPT_THEME + SCRIPT_APPARENCE }} />
-      </head>
+    <html lang="fr">
       <body>
         <Coquille>{children}</Coquille>
       </body>

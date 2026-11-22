@@ -309,15 +309,26 @@ class SalleDeMarche:
         return o
 
     # ------------------------------------------------------------------ avancement du temps
-    def avancer(self, t: datetime) -> list[Execution]:
-        """Évalue les ordres en attente jusqu'à l'instant t, en échantillonnant le temps simulé."""
+    @property
+    def dernier_instant(self) -> datetime | None:
+        return self._dernier_t
+
+    def _a_surveiller(self) -> bool:
+        return any(any(o.ouvert for o in c.ordres.values()) or any(r.active for r in c.regles.values())
+                   for c in self._comptes.values())
+
+    def avancer(self, t: datetime, pas_s: float | None = None) -> list[Execution]:
+        """Évalue les ordres en attente jusqu'à l'instant t, en échantillonnant le temps simulé (tous les `pas_s` au moins)."""
         if self._dernier_t is None or t <= self._dernier_t:
             if self._dernier_t is not None and t < self._dernier_t:
                 self._impacts.clear()
             self._dernier_t = t
             return []
+        if not self._a_surveiller():                 # ni ordre ni règle : rien à échantillonner
+            self._dernier_t = t
+            return []
         ecart = (t - self._dernier_t).total_seconds()
-        pas = max(self._pas, ecart / self._max_echantillons)
+        pas = max(pas_s or self._pas, ecart / self._max_echantillons)
         n = max(1, math.ceil(ecart / pas))
         debut, nouvelles = self._dernier_t, []
         for i in range(1, n + 1):
@@ -325,6 +336,57 @@ class SalleDeMarche:
             nouvelles += self._passe(ts)
         self._dernier_t = t
         return nouvelles
+
+    def avancer_journee(self, fin: datetime, pas_s: float) -> list[Execution]:
+        """Va jusqu'à la fin d'une journée traversée. Si les bornes de la séance prouvent qu'aucun ordre ni règle ne peut
+        se déclencher, inutile de rejouer ses ticks : le résultat est le même, un saut de huit ans reste rapide."""
+        debut = self._dernier_t
+        if debut is not None and debut < fin and self._journee_calme(debut, fin):
+            self._dernier_t = fin
+            return []
+        return self.avancer(fin, pas_s=pas_s)
+
+    def _journee_calme(self, debut: datetime, fin: datetime) -> bool:
+        """Vrai seulement si c'est certain ; au moindre doute on échantillonne."""
+        if debut.date() != fin.date() and fin - debut > timedelta(days=1):
+            return False
+        jours = {debut.date(), fin.date()}
+        for compte in self._comptes.values():
+            suivis: list[tuple[str, float, float]] = []        # symbole, seuil bas, seuil haut
+            for o in compte.ordres.values():
+                if not o.ouvert:
+                    continue
+                if o.declenche:
+                    return False
+                niveau = o.prix_limite if o.type == LIMITE else o.prix_stop
+                if niveau is None:
+                    return False
+                par_le_bas = (o.type == LIMITE) == (o.sens == ACHAT)
+                suivis.append((o.symbole, niveau, math.inf) if par_le_bas else (o.symbole, -math.inf, niveau))
+            for r in compte.regles.values():
+                if not r.active:
+                    continue
+                pos = compte.positions.get(r.symbole)
+                if pos is None:
+                    return False                               # la règle doit être annulée
+                if r.type == STOP_SUIVEUR:
+                    if r.plus_haut is None:
+                        return False
+                    suivis.append((r.symbole, r.plus_haut * (1 - r.seuil), r.plus_haut))
+                elif r.type == STOP_LOSS:
+                    suivis.append((r.symbole, pos.prix_moyen * (1 + r.seuil), math.inf))
+                else:
+                    suivis.append((r.symbole, -math.inf, pos.prix_moyen * (1 + r.seuil)))
+            for symbole, bas, haut in suivis:
+                impact = abs(self._impact(symbole, debut))     # il ne fait que décroître ensuite
+                for jour in jours:
+                    bornes = self._moteur.bornes_du_jour(symbole, jour)
+                    if bornes is None:
+                        continue
+                    marge = impact + 1e-6 * max(1.0, abs(bornes[0]), abs(bornes[1]))
+                    if bornes[0] - marge <= bas or bornes[1] + marge >= haut:
+                        return False
+        return True
 
     def _passe(self, ts: datetime) -> list[Execution]:
         nouvelles: list[Execution] = []

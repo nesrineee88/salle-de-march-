@@ -145,9 +145,9 @@ function fiches(a: Analyse): Record<Cle, Fiche> {
     ecart_type: {
       titre: "Écart-type et volatilité historique", nature: "risque",
       valeur: r?.ecart_type_jour != null ? `${pct(r.ecart_type_jour, 2)} par séance · ${pct(r.volatilite_annuelle_seances, 1)} par an` : "–",
-      formule: "σ = √( Σ (rᵢ − r̄)² / (n − 1) )\nσ annuelle = σ × √252",
+      formule: "σ = √( Σ (rᵢ − r̄)² / (n − 1) )\nσ annuelle = σ × √252 (√365 pour des cryptomonnaies seules)",
       interpretation: "Mesure la dispersion des rendements autour de leur moyenne : plus elle est haute, plus la valeur du portefeuille varie fort, dans les deux sens.",
-      calcul: `Rendements de séance du portefeuille ACTUEL (poids d'aujourd'hui) sur ${r?.jours ?? "–"} séances passées communes à vos actifs ; écart-type d'échantillon (n − 1), annualisé avec 252 séances.`,
+      calcul: `Rendements de séance du portefeuille ACTUEL (poids d'aujourd'hui) sur ${r?.jours ?? "–"} séances passées communes à vos actifs ; écart-type d'échantillon (n − 1), annualisé avec ${r?.seances_an ?? 252} séances.`,
       simple: "Un écart-type de 1 % par séance signifie qu'une variation de ±1 % en une journée est banale.",
       visuel: r?.distribution && r.ecart_type_jour != null ? <Histogramme d={r.distribution} sigma={r.ecart_type_jour} libelle="Distribution des rendements de séance avec la bande d'un écart-type" /> : sansDonnees,
     },

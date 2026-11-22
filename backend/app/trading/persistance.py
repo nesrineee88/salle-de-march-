@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, delete, select
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, delete, insert, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from ..utilisateurs.db import Base
@@ -189,6 +189,20 @@ def enregistrer_point(session: Session, utilisateur_id: int, point: dict) -> Non
     session.merge(HistoriqueValeurDb(
         utilisateur_id=utilisateur_id, jour=date.fromisoformat(point["jour"]), instant=_dt(point["instant"]),
         equity=point["equity"], cash=point["cash"], valeur_positions=point["valeur_positions"]))
+    session.commit()
+
+
+def enregistrer_points(session: Session, utilisateur_id: int, points: list[dict]) -> None:
+    """Un point par jour traversé, en une seule transaction. Les points déjà enregistrés sur ces jours sont remplacés."""
+    if not points:
+        return
+    par_jour = {date.fromisoformat(p["jour"]): p for p in points}
+    session.execute(delete(HistoriqueValeurDb).where(
+        HistoriqueValeurDb.utilisateur_id == utilisateur_id,
+        HistoriqueValeurDb.jour >= min(par_jour), HistoriqueValeurDb.jour <= max(par_jour)))
+    session.execute(insert(HistoriqueValeurDb), [
+        {"utilisateur_id": utilisateur_id, "jour": j, "instant": _dt(p["instant"]), "equity": p["equity"],
+         "cash": p["cash"], "valeur_positions": p["valeur_positions"]} for j, p in par_jour.items()])
     session.commit()
 
 

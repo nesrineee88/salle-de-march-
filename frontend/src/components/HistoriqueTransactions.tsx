@@ -14,7 +14,7 @@ const dateComplete = (iso: string) => FORMAT.format(instantDate(iso)).replace(" 
 
 /** Historique de toutes les transactions : quoi, quand (date et heure simulées), combien, à quel prix, avec les totaux. */
 export default function HistoriqueTransactions() {
-  const { execs, ordres, actifs } = useMarche();
+  const { execs, ordres, actifs, derniereReussiteCompte } = useMarche();
   const [filtre, setFiltre] = useState<Filtre>("tout");
   const [symbole, setSymbole] = useState("");
 
@@ -38,6 +38,7 @@ export default function HistoriqueTransactions() {
     URL.revokeObjectURL(a.href);
   }
 
+  if (execs.length === 0 && !derniereReussiteCompte) return <p className="chargement" role="status">Chargement des transactions…</p>;
   if (execs.length === 0) return <p className="vide">Aucune transaction pour le moment. Chaque achat et chaque vente apparaîtra ici, avec sa date et son heure.</p>;
 
   return (

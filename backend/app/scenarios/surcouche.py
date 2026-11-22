@@ -15,6 +15,7 @@ import pandas as pd
 from ..marche.catalogue import Univers
 
 BENCHMARK = "^GSPC"
+INDICES_ACTIONS = (BENCHMARK, "^SP500TR", "^NDX", "^DJI", "^990100-USD-STRD")
 CLASSES_CHOC = ("action", "crypto", "matiere")
 
 
@@ -43,8 +44,8 @@ def symboles_concernes(univers: Univers, portee_type: str, valeurs) -> set[str]:
         touches = {a.symbole for a in negociables if a.symbole in valeurs}
     else:
         raise ValueError(f"portée inconnue : {portee_type}")
-    if any(univers[s].classe == "action" for s in touches if s in univers) and BENCHMARK in univers:
-        touches.add(BENCHMARK)
+    if any(univers[s].classe == "action" for s in touches if s in univers):
+        touches.update(s for s in INDICES_ACTIONS if s in univers)
     return touches
 
 

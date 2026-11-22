@@ -17,7 +17,7 @@ from ..utilisateurs.service import auditer
 from . import faits, service
 from .modeles import ActualiteDb, ScenarioDb
 from .sentiment import analyser
-from .surcouche import Parametres
+from .surcouche import INDICES_ACTIONS, Parametres
 
 routeur = APIRouter(prefix="/api/v1")
 
@@ -89,7 +89,7 @@ def creer_scenario(corps: CorpsScenario, ctx: Contexte = Depends(obtenir_context
     session.commit()
     if corps.annonce and corps.annonce.strip():
         from .surcouche import symboles_concernes
-        concernes = sorted(x for x in symboles_concernes(ctx.univers, p.portee_type, p.portee_valeurs) if x != "^GSPC")
+        concernes = sorted(x for x in symboles_concernes(ctx.univers, p.portee_type, p.portee_valeurs) if x not in INDICES_ACTIONS)
         session.add(ActualiteDb(date=corps.date_debut, titre=corps.annonce.strip()[:200], texte="", symboles=concernes[:20] if corps.portee_type == "actifs" else [],
                                 type_source="scenario", note_source="Actualité fictive liée à un scénario de crise créé par l'administrateur.", scenario_id=s.id))
         session.commit()

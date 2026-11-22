@@ -1,60 +1,64 @@
 /* ============================================================================
-   Salle de marché : système visuel
-   Nuit de Sidi : un bleu-nuit profond, des gains en bleu clair et des pertes en orange
-   (lisibles par les daltoniens ; la couleur n'est jamais la seule information : signes et flèches).
-   Le jasmin (jaune pâle) est réservé à ce qui touche au temps : curseur, focus, repères.
-   Des panneaux à filet fin (sans ombre) regroupent chaque sujet ; la frise du temps reste l'élément mis en avant.
+   Séance : système visuel
+   Un seul thème : navy pour la salle, cyan pour agir et pour ce qui est vivant.
+   Gains en menthe, pertes en corail, toujours avec un signe ou une flèche : la couleur n'est jamais la seule information.
+   Coquille et Dashboard : seance.css.
    ========================================================================== */
 :root {
-  --nuit: #0b1620;
-  --nuit-2: #0f1d2a;
-  --nuit-3: #162838;
-  --trait: #213446;
-  --trait-fort: #34506a;
-  --texte: #e6eef5;
-  --discret: #8fa6b8;
-  --gain: #5baeff;
-  --perte: #ff9255;
-  --accent: #f0d58a;
-  --erreur: #ff8f8f;
-  --ok: #8fe0c0;
-  --alerte: #ffc247;
-  --barre: #7aa2cc;
-  --ref: #5d7488;
-  --surface-3: #1d3043;
-  --serie-1: #d55181; --serie-2: #9085e9; --serie-3: #199e70; --serie-4: #c98500; --serie-5: #3987e5; --serie-6: #e66767;   /* validées sur #0f1d2a */
-  --hero-1: #1b3f68; --hero-2: #0f2540;   /* dégradé de l'en-tête de fiche (modèle Wallet) */
-  --sur-couleur: #0b1620;          /* texte posé sur un fond plein (bouton d'achat, bouton principal) */
+  --nuit: #040b16;
+  --nuit-2: #071222;
+  --nuit-3: #0e2036;
+  --trait: #162b45;
+  --trait-fort: #27466a;
+  --texte: #edf5fb;
+  --discret: #8399b2;
+  --gain: #4fd1b0;
+  --perte: #ff8580;
+  --accent: #3be3ea;
+  --erreur: #ff8580;
+  --ok: #4fd1b0;
+  --alerte: #f2c46d;
+  --barre: #4c86e8;
+  --ref: #5f7690;
+  --surface-3: #142b46;
+  --serie-1: #0fa3b1; --serie-2: #8b7cf0; --serie-3: #b98a14; --serie-4: #d9578b; --serie-5: #4c86e8; --serie-6: #d96a2b;
+  --hero-1: #0e2036; --hero-2: #071222;   /* dégradé de l'en-tête de fiche */
+  --sur-couleur: #03202a;          /* texte posé sur un fond plein (bouton d'achat, bouton principal) */
   --police-titre: "Bricolage Grotesque Variable", "Bricolage Grotesque", system-ui, sans-serif;
   --police: "IBM Plex Sans", system-ui, sans-serif;
+  --esp-1: 0.25rem;
+  --esp-2: 0.5rem;
+  --esp-3: 0.75rem;
+  --esp-4: 1rem;
+  --esp-6: 1.5rem;
+  --esp-8: 2rem;
+  --rayon-1: 4px;
+  --rayon-2: 8px;
+  --rayon-3: 12px;
+  --ombre-1: 0 1px 2px rgb(0 0 0 / 0.25);
+  --ombre-2: 0 4px 16px rgb(0 0 0 / 0.35);
+  --t-xs: 0.75rem;
+  --t-s: 0.875rem;
+  --t-m: 1rem;
+  --t-l: 1.25rem;
+  --t-xl: 1.75rem;
+  --t-2xl: 2.5rem;
+  --synthetique: #b48cff;
+  --reel: var(--ok);
+  --menu-l: 15rem;
+  --colonne-ordre: 20rem;
+  --texte-2: #a9bdd1;
+  --accent-voile: rgb(59 227 234 / 0.11);
+  --turquoise: #18c3b8;
+  --turquoise-sombre: #0e8f98;
+  --marque-gain: #2fa58a;
+  --marque-perte: #e5625e;
 }
 
 /* Thème clair : mêmes rôles de couleur, valeurs réglées pour un fond blanc (contraste d'au moins 4,4 sur les textes). */
-:root[data-theme="clair"] {
-  --nuit: #f3f6f9;
-  --nuit-2: #ffffff;
-  --nuit-3: #e9eff5;
-  --trait: #d6dee7;
-  --trait-fort: #aebccb;
-  --texte: #0f2233;
-  --discret: #53677a;
-  --gain: #0f6fd0;
-  --perte: #c24a14;
-  --accent: #9a6a00;
-  --erreur: #c62828;
-  --ok: #1b7f5c;
-  --alerte: #a86b00;
-  --barre: #3f7fb8;
-  --ref: #7a8a99;
-  --surface-3: #dfe7ef;
-  --serie-1: #c93f78; --serie-2: #6250d6; --serie-3: #0f8a62; --serie-4: #a86b00; --serie-5: #2a78d6; --serie-6: #d93636;   /* validées sur #ffffff */
-  --hero-1: #dcebfb; --hero-2: #f6faff;
-  --sur-couleur: #ffffff;
-}
 
 *, *::before, *::after { box-sizing: border-box; }
 html { color-scheme: dark; }
-:root[data-theme="clair"] { color-scheme: light; }
 body {
   margin: 0;
   background: var(--nuit);
@@ -88,9 +92,6 @@ pre { background: var(--nuit-3); border: 1px solid var(--trait); padding: 0.75re
 .marque { font-family: var(--police-titre); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
 
 /* ---------- bouton de thème ---------- */
-.btn-theme { padding: 0.35rem 0.7rem; white-space: nowrap; color: var(--discret); }
-.btn-theme:hover:not(:disabled) { color: var(--texte); }
-.auth-theme { position: absolute; top: 1rem; right: 1rem; z-index: 2; }
 
 /* ---------- boutons et champs ---------- */
 .btn {
@@ -104,11 +105,11 @@ a.btn:not(.btn-principal) { color: inherit; }
 .btn-principal { background: var(--accent); color: var(--sur-couleur); border-color: var(--accent); font-weight: 600; width: 100%; padding: 0.6rem; margin-top: 0.5rem; }
 .btn-principal:hover:not(:disabled) { background: var(--accent); filter: brightness(1.1); }
 .btn-ordre { width: 100%; padding: 0.65rem; font-weight: 600; color: var(--sur-couleur); margin-top: 0.5rem; }
-.btn-achat { background: var(--gain); border-color: var(--gain); }
-.btn-achat:hover:not(:disabled) { background: var(--gain); filter: brightness(1.1); }
+.btn-achat { background: var(--accent); border-color: var(--accent); }
+.btn-achat:hover:not(:disabled) { background: var(--accent); filter: brightness(1.1); }
 .btn-vente { background: var(--perte); border-color: var(--perte); }
 .btn-vente:hover:not(:disabled) { background: var(--perte); filter: brightness(1.1); }
-.lien { background: none; border: 0; padding: 0; color: var(--gain); text-decoration: underline; text-underline-offset: 3px; }
+.lien { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 
 .champ { margin-bottom: 0.85rem; }
 .champ label { display: block; font-size: 0.8125rem; color: var(--discret); margin-bottom: 0.25rem; }
@@ -136,7 +137,6 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .auth-formulaire form { margin-top: 1.5rem; }
 
 /* ---------- coquille : en-tête, barre du temps, contenu ---------- */
-.coquille { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
 .contenu { flex: 1 1 0; min-height: 0; overflow: auto; }
 .bandeaux:empty { display: none; }
 .bandeau { padding: 0.5rem 1rem; margin: 0; background: var(--nuit-3); border-bottom: 1px solid var(--trait); font-size: 0.8125rem; }
@@ -144,10 +144,7 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .avertissement::before { content: "i  "; font-weight: 700; }
 .info { color: var(--texte); }
 .info::before { content: "i  "; font-weight: 700; color: var(--accent); }
-
-.entete { display: flex; align-items: center; gap: 1.5rem; padding: 0.55rem 1rem; background: var(--nuit-2); border-bottom: 1px solid var(--trait); }
 .marque { color: var(--texte); text-decoration: none; white-space: nowrap; }
-.navigation { display: flex; gap: 0.15rem; flex: 1 1 auto; min-width: 0; }
 .nav-groupe { position: relative; }
 .nav-bouton { background: none; border: 0; font: inherit; }
 .nav-fleche { font-size: 0.7em; margin-left: 0.1rem; }
@@ -157,7 +154,6 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .nav-lien { color: var(--discret); text-decoration: none; padding: 0.4rem 0.8rem; border-radius: 6px; white-space: nowrap; }
 .nav-lien:hover { color: var(--texte); background: var(--nuit-3); }
 .nav-lien[aria-current="page"] { color: var(--texte); background: var(--surface-3); font-weight: 500; }
-.entete-droite { display: flex; align-items: center; gap: 0.75rem; margin-left: auto; }
 .modes { display: inline-flex; border: 1px solid var(--trait-fort); border-radius: 6px; overflow: hidden; }
 .modes button { background: none; border: 0; padding: 0.4rem 0.75rem; color: var(--discret); }
 .modes button[aria-pressed="true"] { background: var(--nuit-3); color: var(--texte); }
@@ -166,43 +162,9 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .menu-info { padding: 0.5rem 0.65rem; color: var(--discret); font-size: 0.8125rem; border-bottom: 1px solid var(--trait); margin-bottom: 0.25rem; }
 .menu button, .menu a { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0.5rem 0.65rem; border-radius: 4px; color: inherit; text-decoration: none; }
 .menu button:hover, .menu a:hover { background: var(--trait); }
-
-.temps { display: flex; align-items: center; gap: 1.5rem; padding: 0.4rem 1rem 0.3rem; border-bottom: 1px solid var(--trait); background: var(--nuit); }
-.horloge { display: flex; align-items: baseline; gap: 0.8rem; white-space: nowrap; }
-.horloge-heure { font-family: var(--police-titre); font-weight: 700; font-size: 1.9rem; line-height: 1; letter-spacing: -0.02em; color: var(--accent); }
-.horloge-date { color: var(--texte); }
-.horloge-date::first-letter { text-transform: uppercase; }
-.commandes-temps { display: flex; align-items: center; gap: 0.75rem; }
 .btn-temps { min-width: 6.5rem; border-color: var(--accent); color: var(--accent); }
-.vitesse { display: flex; align-items: center; gap: 0.5rem; color: var(--discret); font-size: 0.8125rem; }
-.vitesse select { width: auto; }
-.temps .frise { flex: 1 1 18rem; min-width: 14rem; margin-top: 0; }
 
 /* frise du temps */
-.frise { position: relative; height: 3.1rem; margin-top: 0.4rem; }
-.frise-reperes { position: absolute; left: 3px; right: 3px; top: 0; height: 1.1rem; }
-.frise-repere { position: absolute; transform: translateX(-50%); background: none; border: 0; padding: 0.15rem 0.35rem; }
-.frise-repere::before { content: ""; display: block; width: 0.55rem; height: 0.55rem; background: var(--accent); transform: rotate(45deg); }
-.frise-repere:hover::before, .frise-repere:focus-visible::before { background: var(--texte); }
-.frise-bulle {
-  display: none; position: absolute; top: calc(100% + 0.3rem); left: 50%; transform: translateX(-50%);
-  width: 15rem; text-align: left; background: var(--nuit-3); border: 1px solid var(--trait-fort);
-  border-radius: 6px; padding: 0.55rem 0.7rem; font-size: 0.8125rem; z-index: 15; color: var(--texte);
-}
-.frise-bulle strong { display: block; margin-bottom: 0.15rem; }
-.frise-bulle span { color: var(--discret); }
-.frise-repere:hover .frise-bulle, .frise-repere:focus-visible .frise-bulle { display: block; }
-.frise-curseur {
-  -webkit-appearance: none; appearance: none; position: absolute; top: 1.1rem; left: 0; width: 100%; height: 1rem;
-  background: transparent; padding: 0; border: 0; cursor: pointer;
-}
-.frise-curseur::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--accent) var(--pos, 0%), var(--trait-fort) var(--pos, 0%)); }
-.frise-curseur::-moz-range-track { height: 4px; border-radius: 2px; background: var(--trait-fort); }
-.frise-curseur::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
-.frise-curseur::-webkit-slider-thumb { -webkit-appearance: none; width: 6px; height: 1rem; margin-top: -6px; border-radius: 2px; background: var(--texte); border: 0; }
-.frise-curseur::-moz-range-thumb { width: 6px; height: 1rem; border-radius: 2px; background: var(--texte); border: 0; }
-.frise-annees { position: absolute; left: 3px; right: 3px; bottom: 0; height: 0.9rem; font-size: 0.75rem; color: var(--discret); }
-.frise-annees span { position: absolute; transform: translateX(-2px); }
 
 /* page de marché : liste | graphique + détail | ticket + carnet */
 .page-marche { display: grid; height: 100%; min-height: 0; overflow: hidden; grid-template-columns: 17rem minmax(0, 1fr) 21rem; }
@@ -289,7 +251,7 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .ticket h2 { margin-bottom: 0.7rem; }
 .onglets-sens { margin-bottom: 0.9rem; }
 .onglets-sens .onglet { flex: 1; text-align: center; }
-.onglets-sens .onglet[data-sens="achat"][aria-selected="true"] { border-bottom-color: var(--gain); color: var(--gain); }
+.onglets-sens .onglet[data-sens="achat"][aria-selected="true"] { border-bottom-color: var(--accent); color: var(--accent); }
 .onglets-sens .onglet[data-sens="vente"][aria-selected="true"] { border-bottom-color: var(--perte); color: var(--perte); }
 .raccourcis { display: flex; gap: 0.35rem; margin-top: 0.35rem; }
 .raccourcis button { flex: 1; background: var(--nuit-2); border: 1px solid var(--trait); border-radius: 4px; padding: 0.2rem; font-size: 0.8125rem; color: var(--discret); }
@@ -352,11 +314,11 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .kpis-risque { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .indicateur { background: var(--nuit-2); border: 1px solid var(--trait); border-radius: 8px; padding: 0.8rem 1rem; display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .indicateur-libelle { color: var(--discret); font-size: 0.8125rem; }
-.indicateur-valeur { font-family: var(--police-titre); font-weight: 600; font-size: 1.5rem; letter-spacing: -0.01em; line-height: 1.2; }
+.indicateur-valeur { font-family: var(--police); font-weight: 600; font-size: 1.5rem; letter-spacing: -0.01em; line-height: 1.2; min-width: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .indicateur-detail { color: var(--discret); font-size: 0.8125rem; }
 .indicateur-aide { color: var(--discret); font-size: 0.78rem; margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px solid var(--trait); line-height: 1.4; }
 .indicateur-grand { grid-column: span 2; }
-.indicateur-grand .indicateur-valeur { font-size: 3rem; font-variant-numeric: proportional-nums; font-weight: 700; line-height: 1.1; }
+.indicateur-grand .indicateur-valeur { font-size: 1.8rem; font-weight: 600; line-height: 1.2; }
 
 /* courbe de valeur */
 .courbe { margin: 0; }
@@ -510,13 +472,11 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 /* ---------- adaptation aux petits écrans ---------- */
 @media (max-width: 1280px) {
   .page-marche { grid-template-columns: 15rem minmax(0, 1fr) 19rem; }
-  .entete { gap: 1rem; }
 }
 @media (max-width: 1100px) {
   .kpis-risque { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grille-courbe, .grille-3 { grid-template-columns: 1fr; }
   .indicateur-grand { grid-column: span 1; }
-  .temps { flex-wrap: wrap; gap: 0.5rem 1.25rem; }
 }
 @media (max-width: 600px) {
   .kpis-risque { grid-template-columns: 1fr; }
@@ -528,10 +488,7 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 @media (max-width: 900px) {
   .auth { grid-template-columns: 1fr; }
   .auth-recit { border-right: 0; border-bottom: 1px solid var(--trait); }
-  .coquille { display: block; height: auto; overflow: visible; }
   .contenu { overflow: visible; }
-  .entete { flex-wrap: wrap; }
-  .navigation { order: 3; flex-basis: 100%; }
   .grille-2 { grid-template-columns: 1fr; }
   .page-marche { display: block; height: auto; overflow: visible; }
   .marches { max-height: 14rem; border-right: 0; border-bottom: 1px solid var(--trait); }
@@ -554,7 +511,7 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 .strat-carte { border: 1px solid var(--trait); border-radius: 6px; padding: 0.65rem 0.8rem; background: var(--nuit); min-width: 0; }
 .strat-titre { display: flex; gap: 0.5rem; align-items: center; cursor: pointer; }
 .strat-params { margin-top: 0.5rem; }
-.strat-params summary, .strat-aide summary { cursor: pointer; color: var(--gain); font-size: 0.8125rem; }
+.strat-params summary, .strat-aide summary { cursor: pointer; color: var(--accent); font-size: 0.8125rem; }
 .strat-params .strat-champs { margin-top: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
 .strat-lancer { max-width: 26rem; }
 .strat-legende { display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; list-style: none; padding: 0; margin: 0 0 0.6rem; }
@@ -595,14 +552,8 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 @media (max-width: 960px) { .actu-etude { position: static; } }
 
 /* ---------- mode Direct (bêta) ---------- */
-.direct-badge { color: var(--perte); font-weight: 600; margin: 0 0.75rem 0 0; white-space: nowrap; }
-.direct-fiche { position: absolute; z-index: 30; top: 5.2rem; left: 1rem; max-width: 34rem; background: var(--nuit-3); border: 1px solid var(--trait-fort); border-radius: 8px; padding: 1rem 1.2rem; display: grid; gap: 0.6rem; box-shadow: 0 6px 24px rgba(0,0,0,0.35); }
-.direct-fiche h2 { font-size: 1.05rem; }
-.direct-fiche ul { padding-left: 1.1rem; list-style: disc; font-size: 0.8125rem; color: var(--discret); display: grid; gap: 0.25rem; }
 .direct-actions { display: flex; gap: 0.6rem; }
 .direct-actions .btn-principal { width: auto; margin-top: 0; padding: 0.45rem 1rem; }
-.direct-erreur { position: absolute; z-index: 30; top: 4.6rem; left: 1rem; background: var(--nuit-3); padding: 0.4rem 0.8rem; border-radius: 6px; }
-.temps { position: relative; }
 
 /* ---------- risque de crédit ---------- */
 .z-score { font-family: var(--police-titre); font-weight: 700; font-size: 3rem; line-height: 1.1; }
@@ -627,10 +578,6 @@ input::placeholder { color: var(--discret); opacity: 0.7; }
 /* ============================================================================
    Nouvelle mise en page : barre du haut, bandeau de cours, menu latéral, panneau des suivis
    ========================================================================== */
-html[data-densite="compacte"] { font-size: 14px; }
-html[data-densite="aeree"] { font-size: 17px; }
-
-.corps { flex: 1 1 0; min-height: 0; display: flex; position: relative; }
 .colonne { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
 
 .btn-icone { background: none; border: 0; padding: 0.35rem; border-radius: 6px; color: var(--discret); display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; min-height: 2rem; transition: color 0.15s, background 0.15s; }
@@ -640,12 +587,6 @@ html[data-densite="aeree"] { font-size: 17px; }
 kbd { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.72rem; border: 1px solid var(--trait-fort); border-radius: 4px; padding: 0 0.3rem; color: var(--discret); background: var(--nuit); }
 
 /* barre du haut */
-.entete { gap: 0.75rem; }
-.menu-mobile { display: none; }
-.recherche-declencheur { flex: 1 1 14rem; max-width: 30rem; display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.7rem; background: var(--nuit); border: 1px solid var(--trait-fort); border-radius: 6px; color: var(--discret); text-align: left; transition: border-color 0.15s; }
-.recherche-declencheur:hover { border-color: var(--discret); color: var(--texte); }
-.recherche-declencheur-texte { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.entete-droite { gap: 0.5rem; }
 
 /* bandeau de cours */
 .bandeau-cours { background: var(--nuit-2); border-bottom: 1px solid var(--trait); display: flex; align-items: stretch; min-height: 2.35rem; overflow: hidden; }
@@ -671,19 +612,6 @@ kbd { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size
 .cours-baisse { background: color-mix(in srgb, var(--perte) 22%, transparent); }
 
 /* menu latéral */
-.menu-lateral { flex: none; width: 14.5rem; background: var(--nuit-2); border-right: 1px solid var(--trait); display: flex; flex-direction: column; min-height: 0; transition: width 0.2s ease; }
-.menu-lateral[data-replie="true"] { width: 3.6rem; }
-.menu-lateral-liste { flex: 1 1 0; min-height: 0; overflow-y: auto; padding: 0.6rem 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.menu-section ul { display: grid; gap: 0.1rem; }
-.menu-section-titre { font-family: var(--police); font-size: 0.72rem; font-weight: 600; color: var(--discret); padding: 0.5rem 0.65rem 0.25rem; letter-spacing: 0.01em; }
-.menu-section-trait { border: 0; border-top: 1px solid var(--trait); margin: 0.4rem 0.5rem; }
-.menu-lien { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.65rem; border-radius: 6px; color: var(--discret); text-decoration: none; background: none; border: 0; width: 100%; text-align: left; transition: color 0.15s, background 0.15s; min-height: 2.25rem; }
-.menu-lien:hover { color: var(--texte); background: var(--nuit-3); }
-.menu-lien[aria-current="page"] { color: var(--texte); background: var(--surface-3); font-weight: 500; box-shadow: inset 3px 0 0 var(--accent); }
-.menu-lateral[data-replie="true"] .menu-lien { justify-content: center; padding-inline: 0; }
-.menu-bascule-bas { border-top: 1px solid var(--trait); border-radius: 0; padding: 0.7rem 1.1rem; }
-.menu-lateral[data-replie="true"] .menu-bascule-bas { padding-inline: 0; }
-.menu-voile { display: none; }
 
 /* panneau des suivis */
 .suivis { flex: none; width: 17rem; background: var(--nuit-2); border-left: 1px solid var(--trait); padding: 0.75rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -719,26 +647,6 @@ kbd { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size
 .recherche-pied { padding: 0.5rem 0.8rem; border-top: 1px solid var(--trait); font-size: 0.75rem; }
 
 /* fenêtre Apparence */
-.apparence { position: relative; }
-.apparence-fenetre { position: absolute; right: 0; top: calc(100% + 0.4rem); z-index: 40; width: 22rem; max-width: calc(100vw - 1.5rem); background: var(--nuit-3); border: 1px solid var(--trait-fort); border-radius: 10px; padding: 0.9rem; display: grid; gap: 0.8rem; }
-.apparence-fenetre fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-.apparence-fenetre legend { font-weight: 600; font-size: 0.8125rem; margin-bottom: 0.4rem; padding: 0; }
-.modeles { display: grid; gap: 0.4rem; }
-.modele { display: grid; grid-template-columns: 3.4rem 1fr; grid-template-areas: "ap nom" "ap desc"; column-gap: 0.7rem; align-items: center; padding: 0.5rem; border: 1px solid var(--trait-fort); border-radius: 8px; cursor: pointer; }
-.modele[data-choisi="true"] { border-color: var(--accent); background: var(--nuit-2); }
-.modele input { position: absolute; opacity: 0; pointer-events: none; }
-.modele:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-.modele-apercu { grid-area: ap; display: grid; grid-template-columns: 0.8rem 1fr; grid-template-rows: 0.5rem 1fr; gap: 2px; height: 2.6rem; padding: 3px; background: var(--nuit); border: 1px solid var(--trait-fort); }
-.modele-apercu i { background: var(--trait-fort); display: block; }
-.modele-apercu i:nth-child(1) { grid-column: 1 / 3; }
-.modele-apercu i:nth-child(3) { background: var(--surface-3); }
-.modele-apercu-courtage { border-radius: 5px; }
-.modele-apercu-terminal { border-radius: 0; }
-.modele-apercu-terminal i { border-radius: 0; }
-.modele-apercu-fintech { border-radius: 10px; }
-.modele-apercu-fintech i { border-radius: 4px; }
-.modele-nom { grid-area: nom; font-weight: 600; align-self: end; }
-.modele small { grid-area: desc; align-self: start; line-height: 1.25; }
 .choix-ligne { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .choix { display: inline-flex; align-items: center; padding: 0.3rem 0.75rem; border: 1px solid var(--trait-fort); border-radius: 999px; font-size: 0.8125rem; cursor: pointer; }
 .choix[data-choisi="true"] { border-color: var(--accent); background: var(--nuit-2); }
@@ -750,52 +658,12 @@ kbd { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size
    Modèles de style (choisis dans « Apparence »). Ils ne changent que l'allure, jamais les données.
    courtage = réglage d'origine ; terminal = dense et technique ; fintech = aéré et arrondi.
    ========================================================================== */
-html[data-modele="terminal"] { --police: "IBM Plex Sans", system-ui, sans-serif; }
-html[data-modele="terminal"] body { font-size: 0.875rem; }
-html[data-modele="terminal"] .panneau, html[data-modele="terminal"] .btn, html[data-modele="terminal"] input, html[data-modele="terminal"] select,
-html[data-modele="terminal"] .menu, html[data-modele="terminal"] .modes, html[data-modele="terminal"] .recherche, html[data-modele="terminal"] .apparence-fenetre,
-html[data-modele="terminal"] .recherche-declencheur, html[data-modele="terminal"] .bandeau-pause, html[data-modele="terminal"] .menu-lien,
-html[data-modele="terminal"] .btn-icone, html[data-modele="terminal"] .puce, html[data-modele="terminal"] .modele, html[data-modele="terminal"] .choix { border-radius: 2px; }
-html[data-modele="terminal"] .panneau { padding: 0.65rem 0.75rem; border-color: var(--trait-fort); }
-html[data-modele="terminal"] .menu-lateral { width: 12.5rem; }
-html[data-modele="terminal"] .menu-lateral[data-replie="true"] { width: 3.2rem; }
-html[data-modele="terminal"] .menu-lien { padding: 0.35rem 0.6rem; min-height: 1.9rem; }
-html[data-modele="terminal"] .entete { padding: 0.35rem 0.75rem; }
-html[data-modele="terminal"] .bandeau-cours { background: #000; border-bottom-color: var(--trait-fort); min-height: 2rem; }
-html[data-theme="clair"][data-modele="terminal"] .bandeau-cours { background: var(--nuit-3); }
-html[data-modele="terminal"] .cours, html[data-modele="terminal"] .cours-prix, html[data-modele="terminal"] .graphique-prix, html[data-modele="terminal"] .suivi-cours,
-html[data-modele="terminal"] .recherche-cours, html[data-modele="terminal"] table { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-html[data-modele="terminal"] .cours { padding-block: 0.3rem; }
-html[data-modele="terminal"] .page { padding: 0.9rem 1rem 2rem; gap: 0.75rem; }
-html[data-modele="terminal"] h1, html[data-modele="terminal"] h2, html[data-modele="terminal"] .horloge-heure { font-family: var(--police); }
-
-html[data-modele="fintech"] body { line-height: 1.55; }
-html[data-modele="fintech"] .panneau { border-radius: 16px; border-color: transparent; background: var(--nuit-2); padding: 1.25rem 1.4rem; box-shadow: 0 1px 0 var(--trait); }
-html[data-modele="fintech"] .btn, html[data-modele="fintech"] input, html[data-modele="fintech"] select, html[data-modele="fintech"] .modes,
-html[data-modele="fintech"] .recherche-declencheur, html[data-modele="fintech"] .bandeau-pause { border-radius: 12px; }
-html[data-modele="fintech"] .recherche, html[data-modele="fintech"] .apparence-fenetre, html[data-modele="fintech"] .menu { border-radius: 16px; }
-html[data-modele="fintech"] .menu-lateral { margin: 0.6rem 0 0.6rem 0.6rem; border: 0; border-radius: 16px; background: var(--nuit-2); }
-html[data-modele="fintech"] .menu-lien { border-radius: 12px; padding-block: 0.6rem; }
-html[data-modele="fintech"] .menu-lien[aria-current="page"] { box-shadow: none; background: var(--surface-3); }
-html[data-modele="fintech"] .bandeau-cours { border: 0; margin: 0.5rem 0.6rem 0; border-radius: 999px; background: var(--nuit-2); min-height: 2.6rem; }
-html[data-modele="fintech"] .bandeau-cours-tete { border-right-color: var(--trait); }
-html[data-modele="fintech"] .cours { border-right: 0; padding-inline: 1.1rem; }
-html[data-modele="fintech"] .graphique-prix, html[data-modele="fintech"] .page-tete h1 { font-size: 1.9rem; }
-html[data-modele="fintech"] .page { gap: 1.5rem; padding-top: 1.75rem; }
-html[data-modele="fintech"] .suivis { margin: 0.6rem 0.6rem 0.6rem 0; border: 0; border-radius: 16px; }
-html[data-modele="fintech"] .puce { padding-block: 0.2rem; }
 
 /* petits écrans : le menu devient un tiroir, le bandeau garde ses filtres sur une ligne qui défile */
 @media (max-width: 62rem) {
   .cacher-etroit { display: none; }
-  .menu-mobile { display: inline-flex; }
-  .menu-lateral { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; width: 15.5rem !important; transform: translateX(-102%); transition: transform 0.2s ease; margin: 0 !important; border-radius: 0 !important; }
-  .menu-lateral[data-mobile="true"] { transform: none; }
-  .menu-voile { display: block; position: fixed; inset: 0; z-index: 45; background: rgb(0 0 0 / 0.5); border: 0; }
   .suivis { position: fixed; z-index: 40; right: 0; top: 0; bottom: 0; margin: 0 !important; border-radius: 0 !important; }
   .bandeau-cours-filtres { display: none; }
-  .recherche-declencheur-texte, .recherche-declencheur kbd { display: none; }
-  .recherche-declencheur { flex: none; }
 }
 
 /* mouvement réduit : pas de défilement ni de clignotement, le bandeau se parcourt à la main */
@@ -804,7 +672,7 @@ html[data-modele="fintech"] .puce { padding-block: 0.2rem; }
   .bandeau-cours-piste { overflow-x: auto; mask-image: none; }
   .bandeau-cours-liste[aria-hidden="true"] { display: none; }
   .cours-hausse, .cours-baisse { background: none; }
-  .menu-lateral, .btn-icone, .menu-lien { transition: none; }
+  .btn-icone { transition: none; }
 }
 
 /* ============================================================================
@@ -812,7 +680,6 @@ html[data-modele="fintech"] .puce { padding-block: 0.2rem; }
    ========================================================================== */
 .avatar-actif { --teinte: 210; flex: none; width: 3.25rem; height: 3.25rem; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.15rem;
   background: hsl(var(--teinte) 45% 22%); color: hsl(var(--teinte) 80% 85%); }
-html[data-theme="clair"] .avatar-actif { background: hsl(var(--teinte) 70% 90%); color: hsl(var(--teinte) 60% 22%); }
 
 .fiche { display: grid; gap: 1rem; align-content: start; }
 .fiche-retour { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--discret); text-decoration: none; font-size: 0.8125rem; width: fit-content; }
@@ -874,116 +741,29 @@ html[data-theme="clair"] .avatar-actif { background: hsl(var(--teinte) 70% 90%);
    « Crypto Wallet » (cartes) et « Financial Dashboard » (dense, suisse). Les règles du projet restent :
    gain bleu / perte orange, signes et flèches, jasmin pour le temps. Pas de dégradé violet (déconseillé par le skill).
    ========================================================================== */
-.modeles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.apparence-fenetre { width: 31rem; }
-.modele { grid-template-columns: 2.6rem 1fr; column-gap: 0.55rem; }
-.modele-apercu { height: 2.2rem; }
-.modele-apercu-crypto { border-radius: 6px; background: #05080f; border-color: #2a4a6e; box-shadow: 0 0 6px rgb(91 174 255 / 0.35); }
-.modele-apercu-wallet { border-radius: 10px; background: linear-gradient(135deg, #1d3a5c, #0f1d2a); }
-.modele-apercu-investissement { border-radius: 1px; background: #070d14; }
 
 /* --- Crypto Dashboard : verre dépoli sur fond noir profond --- */
-html[data-modele="crypto"]:not([data-theme="clair"]) { --nuit: #05080f; --nuit-2: #0a111c; --nuit-3: #111c2b; --trait: #1a2a3d; --trait-fort: #2d4764; }
-html[data-modele="crypto"] body { background: radial-gradient(60rem 40rem at 85% -10%, rgb(91 174 255 / 0.13), transparent 60%), radial-gradient(50rem 35rem at 0% 110%, rgb(46 196 182 / 0.09), transparent 60%), var(--nuit); background-attachment: fixed; }
-html[data-modele="crypto"] .coquille, html[data-modele="crypto"] .colonne { background: transparent; }
-html[data-modele="crypto"] .panneau, html[data-modele="crypto"] .menu-lateral, html[data-modele="crypto"] .suivis, html[data-modele="crypto"] .entete,
-html[data-modele="crypto"] .bandeau-cours, html[data-modele="crypto"] .recherche, html[data-modele="crypto"] .apparence-fenetre, html[data-modele="crypto"] .menu,
-html[data-modele="crypto"] .auth-carte {
-  background: color-mix(in srgb, #ffffff 4.5%, transparent); border: 1px solid color-mix(in srgb, #ffffff 9%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
-}
-html[data-theme="clair"][data-modele="crypto"] .panneau, html[data-theme="clair"][data-modele="crypto"] .menu-lateral, html[data-theme="clair"][data-modele="crypto"] .suivis,
-html[data-theme="clair"][data-modele="crypto"] .entete, html[data-theme="clair"][data-modele="crypto"] .bandeau-cours, html[data-theme="clair"][data-modele="crypto"] .recherche,
-html[data-theme="clair"][data-modele="crypto"] .apparence-fenetre, html[data-theme="clair"][data-modele="crypto"] .menu { background: color-mix(in srgb, #ffffff 70%, transparent); border-color: var(--trait); }
-html[data-modele="crypto"] .recherche-fond { backdrop-filter: blur(4px); }
-html[data-modele="crypto"] .panneau, html[data-modele="crypto"] .menu-lateral, html[data-modele="crypto"] .suivis { border-radius: 14px; }
-html[data-modele="crypto"] .menu-lateral { margin: 0.5rem 0 0.5rem 0.5rem; }
-html[data-modele="crypto"] .suivis { margin: 0.5rem 0.5rem 0.5rem 0; }
-html[data-modele="crypto"] .menu-lien[aria-current="page"] { background: rgb(91 174 255 / 0.14); box-shadow: inset 3px 0 0 var(--gain); }
-html[data-modele="crypto"] .btn-principal { box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 35%, transparent); }
-html[data-modele="crypto"] .cours-prix, html[data-modele="crypto"] .fiche-prix, html[data-modele="crypto"] .suivi-cours, html[data-modele="crypto"] .graphique-prix { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-html[data-modele="crypto"] .gain { text-shadow: 0 0 12px rgb(91 174 255 / 0.35); }
-html[data-modele="crypto"] .perte { text-shadow: 0 0 12px rgb(255 146 85 / 0.3); }
-html[data-modele="crypto"] .cours-hausse, html[data-modele="crypto"] .cours-baisse { box-shadow: inset 0 0 12px currentColor; }
 
 /* --- Crypto Wallet : cartes à dégradé, pilules, grands arrondis --- */
-html[data-modele="wallet"] .panneau, html[data-modele="wallet"] .auth-carte { border-radius: 22px; border-color: transparent; background: linear-gradient(160deg, var(--nuit-3), var(--nuit-2) 70%); padding: 1.4rem; }
-html[data-theme="clair"][data-modele="wallet"] .panneau { background: linear-gradient(160deg, #ffffff, #eaf1f8 80%); box-shadow: 0 1px 2px rgb(15 34 51 / 0.08); }
-html[data-modele="wallet"] .fiche-tete { background: linear-gradient(135deg, var(--hero-1), var(--hero-2) 70%); color: #e6eef5; }
-html[data-modele="wallet"] .fiche-tete .discret { color: #a9c0d4; }
-html[data-theme="clair"][data-modele="wallet"] .fiche-tete { background: linear-gradient(135deg, var(--hero-1), var(--hero-2) 70%); color: var(--texte); }
-html[data-theme="clair"][data-modele="wallet"] .fiche-tete .discret { color: var(--discret); }
-html[data-modele="wallet"] .btn, html[data-modele="wallet"] .modes, html[data-modele="wallet"] .recherche-declencheur, html[data-modele="wallet"] .puce, html[data-modele="wallet"] .bandeau-pause { border-radius: 999px; }
-html[data-modele="wallet"] .btn-principal { padding-block: 0.7rem; }
-html[data-modele="wallet"] input, html[data-modele="wallet"] select { border-radius: 14px; }
-html[data-modele="wallet"] .avatar-actif { border-radius: 50%; }
-html[data-modele="wallet"] .menu-lateral { margin: 0.6rem 0 0.6rem 0.6rem; border: 0; border-radius: 22px; background: linear-gradient(180deg, var(--nuit-3), var(--nuit-2)); }
-html[data-modele="wallet"] .menu-lien { border-radius: 999px; padding-block: 0.6rem; }
-html[data-modele="wallet"] .menu-lien[aria-current="page"] { background: var(--gain); color: var(--sur-couleur); box-shadow: none; }
-html[data-modele="wallet"] .suivis { margin: 0.6rem 0.6rem 0.6rem 0; border: 0; border-radius: 22px; background: linear-gradient(180deg, var(--nuit-3), var(--nuit-2)); }
-html[data-modele="wallet"] .bandeau-cours { border: 0; margin: 0.5rem 0.6rem 0; border-radius: 999px; }
-html[data-modele="wallet"] .fiche-prix, html[data-modele="wallet"] .graphique-prix { font-size: 2.1rem; }
-html[data-modele="wallet"] .page { gap: 1.25rem; }
 
 /* --- Investment Platform : dense, sobre, filets fins, bleu de confiance --- */
-html[data-modele="investissement"]:not([data-theme="clair"]) { --nuit: #070d14; --nuit-2: #0c151f; --nuit-3: #121e2b; }
-html[data-modele="investissement"] .panneau, html[data-modele="investissement"] .btn, html[data-modele="investissement"] input, html[data-modele="investissement"] select,
-html[data-modele="investissement"] .menu, html[data-modele="investissement"] .modes, html[data-modele="investissement"] .recherche, html[data-modele="investissement"] .apparence-fenetre,
-html[data-modele="investissement"] .recherche-declencheur, html[data-modele="investissement"] .menu-lien, html[data-modele="investissement"] .btn-icone,
-html[data-modele="investissement"] .puce, html[data-modele="investissement"] .modele, html[data-modele="investissement"] .choix, html[data-modele="investissement"] .auth-carte { border-radius: 3px; }
-html[data-modele="investissement"] .panneau { border-color: var(--trait-fort); padding: 0.8rem 0.95rem; }
-html[data-modele="investissement"] .panneau h2, html[data-modele="investissement"] .fiche-corps h2, html[data-modele="investissement"] .menu-section-titre { text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem; color: var(--discret); font-family: var(--police); font-weight: 600; }
-html[data-modele="investissement"] .menu-lateral { width: 13rem; }
-html[data-modele="investissement"] .menu-lien { min-height: 2rem; padding-block: 0.35rem; }
-html[data-modele="investissement"] .menu-lien[aria-current="page"] { background: color-mix(in srgb, var(--gain) 16%, transparent); box-shadow: inset 2px 0 0 var(--gain); }
-html[data-modele="investissement"] .btn-principal { background: var(--gain); border-color: var(--gain); color: var(--sur-couleur); }
-html[data-modele="investissement"] .onglet[aria-selected="true"] { border-bottom-color: var(--gain); }
-html[data-modele="investissement"] .bandeau-cours { background: var(--nuit); border-bottom-color: var(--trait-fort); }
-html[data-modele="investissement"] .cours, html[data-modele="investissement"] .cours-prix, html[data-modele="investissement"] .suivi-cours, html[data-modele="investissement"] .fait dd,
-html[data-modele="investissement"] .fiche-prix, html[data-modele="investissement"] table { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
-html[data-modele="investissement"] .fait, html[data-modele="investissement"] .suivi { padding-block: 0.3rem; }
-html[data-modele="investissement"] .fait:nth-child(even) { background: color-mix(in srgb, var(--texte) 3%, transparent); }
-html[data-modele="investissement"] .page { gap: 0.7rem; padding: 0.9rem 1rem 2rem; }
-html[data-modele="investissement"] .avatar-actif { border-radius: 3px; }
-@media (max-width: 62rem) { .modeles { grid-template-columns: 1fr; } .apparence-fenetre { width: 22rem; } }
-@media (prefers-reduced-transparency: reduce) { html[data-modele="crypto"] * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; } }
 
 
 /* ============================================================================
    Palettes de couleurs (choisies dans « Apparence > Couleurs »). Elles s'ajoutent à n'importe quel modèle.
    Le bleu des gains et l'orange des pertes ne changent pas : la lecture des chiffres reste la même partout.
    ========================================================================== */
-.palettes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
-.palette { display: grid; justify-items: center; gap: 0.35rem; padding: 0.5rem 0.25rem; border: 1px solid var(--trait-fort); border-radius: 10px; font-size: 0.78rem; cursor: pointer; }
-.palette[data-choisi="true"] { border-color: var(--accent); background: var(--nuit-2); }
-.palette input { position: absolute; opacity: 0; pointer-events: none; }
-.palette:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-.palette-pastilles { display: inline-flex; }
-.palette-pastilles i { width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 1px solid rgb(128 128 128 / 0.5); margin-left: -0.25rem; }
-.palette-pastilles i:first-child { margin-left: 0; }
 
 /* Océan : bleu-vert profond, accent aigue-marine */
-html[data-palette="ocean"]:not([data-theme="clair"]) { --nuit: #071a1f; --nuit-2: #0b252b; --nuit-3: #12323a; --trait: #1d424b; --trait-fort: #2f6470; --surface-3: #173d46; --discret: #8fb8bd; --accent: #7fd6d0; --hero-1: #17586a; --hero-2: #0b2c36; --sur-couleur: #06191e; }
-html[data-palette="ocean"][data-theme="clair"] { --nuit: #eef6f7; --nuit-2: #ffffff; --nuit-3: #e0eef0; --trait: #cfe0e3; --trait-fort: #a5c1c6; --surface-3: #d3e6e9; --discret: #4a6a70; --accent: #0b6b66; --hero-1: #cfeaee; --hero-2: #f4fbfc; }
 
 /* Ardoise : graphite neutre, accent sable (le plus sobre) */
-html[data-palette="ardoise"]:not([data-theme="clair"]) { --nuit: #0e1116; --nuit-2: #141922; --nuit-3: #1b212c; --trait: #262e3b; --trait-fort: #3d4a5e; --surface-3: #222a37; --discret: #9aa7b8; --accent: #d8c9a3; --hero-1: #2f3b52; --hero-2: #161c27; --sur-couleur: #0e1116; }
-html[data-palette="ardoise"][data-theme="clair"] { --nuit: #f2f3f5; --nuit-2: #ffffff; --nuit-3: #e7e9ed; --trait: #d5d9e0; --trait-fort: #aab2bf; --surface-3: #dde1e7; --discret: #566070; --accent: #7a5f1f; --hero-1: #dfe3ea; --hero-2: #f7f8fa; }
 
 /* Forêt : vert profond désaturé, accent or pâle */
-html[data-palette="foret"]:not([data-theme="clair"]) { --nuit: #0a1713; --nuit-2: #0f211b; --nuit-3: #163029; --trait: #20403a; --trait-fort: #356056; --surface-3: #1b3a32; --discret: #93b5aa; --accent: #e3d28f; --hero-1: #1f5446; --hero-2: #0c261f; --sur-couleur: #09150f; }
-html[data-palette="foret"][data-theme="clair"] { --nuit: #f1f6f3; --nuit-2: #ffffff; --nuit-3: #e2eee8; --trait: #d0e0d8; --trait-fort: #a6c2b6; --surface-3: #d6e8df; --discret: #4b6b5f; --accent: #6b5a12; --hero-1: #d2eadf; --hero-2: #f5fbf8; }
 
 
 /* ============================================================================
    Barre du temps : lecture / pause en bouton rond, vitesse compacte, bascule « Rejeu historique | Direct »
    ========================================================================== */
-.btn-lecture { width: 2.4rem; height: 2.4rem; border-radius: 50%; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--sur-couleur); border: 0; transition: transform 0.15s, opacity 0.15s; }
-.btn-lecture:hover:not(:disabled) { transform: scale(1.06); }
-.btn-lecture:disabled { opacity: 0.45; cursor: not-allowed; }
-.vitesse { display: inline-flex; align-items: center; gap: 0.4rem; padding-left: 0.65rem; border: 1px solid var(--trait-fort); border-radius: 8px; color: var(--discret); }
-.vitesse select { border: 0; background: transparent; padding: 0.4rem 0.4rem 0.4rem 0; width: auto; max-width: 11rem; }
-.vitesse:focus-within { border-color: var(--accent); }
 .segment { display: inline-flex; border: 1px solid var(--trait-fort); border-radius: 8px; padding: 2px; gap: 2px; background: var(--nuit-2); }
 .segment button { background: none; border: 0; border-radius: 6px; padding: 0.35rem 0.8rem; color: var(--discret); display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; transition: background 0.15s, color 0.15s; }
 .segment button:hover:not(:disabled) { color: var(--texte); }
@@ -991,12 +771,9 @@ html[data-palette="foret"][data-theme="clair"] { --nuit: #f1f6f3; --nuit-2: #fff
 .segment small { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid currentColor; border-radius: 4px; padding: 0 0.25rem; opacity: 0.75; }
 .point-direct { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); animation: direct-pulse 1.6s ease-in-out infinite; }
 @keyframes direct-pulse { 50% { opacity: 0.35; } }
-@media (prefers-reduced-motion: reduce) { .point-direct { animation: none; } .btn-lecture { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .point-direct { animation: none; } }
 .pastille { min-width: 1.15rem; height: 1.15rem; padding: 0 0.3rem; border-radius: 999px; background: var(--accent); color: var(--sur-couleur); font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .avatar-compte { width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--surface-3); color: var(--texte); display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; }
-html[data-modele="wallet"] .segment, html[data-modele="wallet"] .segment button, html[data-modele="wallet"] .vitesse { border-radius: 999px; }
-html[data-modele="terminal"] .segment, html[data-modele="terminal"] .segment button, html[data-modele="terminal"] .vitesse, html[data-modele="investissement"] .segment, html[data-modele="investissement"] .segment button, html[data-modele="investissement"] .vitesse { border-radius: 2px; }
-html[data-modele="terminal"] .btn-lecture, html[data-modele="investissement"] .btn-lecture { border-radius: 3px; }
 
 /* historique des transactions */
 .historique { display: grid; gap: 0.6rem; }
@@ -1007,22 +784,7 @@ html[data-modele="terminal"] .btn-lecture, html[data-modele="investissement"] .b
 /* ============================================================================
    Fond animé et curseur lumineux (Apparence > Ambiance)
    ========================================================================== */
-.fond-anime { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
 /* quand le fond est animé, les grandes surfaces deviennent translucides pour le laisser voir */
-html:not([data-fond="aucun"]) .temps, html:not([data-fond="aucun"]) .colonne, html:not([data-fond="aucun"]) .contenu, html:not([data-fond="aucun"]) .auth { background: transparent; }
-html:not([data-fond="aucun"]) .panneau, html:not([data-fond="aucun"]) .auth-carte { background: color-mix(in srgb, var(--nuit-2) 80%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-html:not([data-fond="aucun"]) .entete, html:not([data-fond="aucun"]) .menu-lateral, html:not([data-fond="aucun"]) .suivis, html:not([data-fond="aucun"]) .bandeau-cours { background: color-mix(in srgb, var(--nuit-2) 86%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-html:not([data-fond="aucun"])[data-modele="wallet"] .panneau, html:not([data-fond="aucun"])[data-modele="wallet"] .auth-carte { background: linear-gradient(160deg, color-mix(in srgb, var(--nuit-3) 82%, transparent), color-mix(in srgb, var(--nuit-2) 74%, transparent) 70%); }
-html:not([data-fond="aucun"])[data-modele="wallet"] .menu-lateral, html:not([data-fond="aucun"])[data-modele="wallet"] .suivis { background: linear-gradient(180deg, color-mix(in srgb, var(--nuit-3) 85%, transparent), color-mix(in srgb, var(--nuit-2) 80%, transparent)); }
-html:not([data-fond="aucun"])[data-modele="wallet"] .fiche-tete { background: linear-gradient(135deg, color-mix(in srgb, var(--hero-1) 90%, transparent), color-mix(in srgb, var(--hero-2) 85%, transparent) 70%); }
-
-.curseur-anneau, .curseur-point { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 9999; opacity: 0; will-change: transform; }
-.curseur-anneau { width: 2rem; height: 2rem; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--accent) 70%, transparent); background: radial-gradient(circle, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
-  transition: width 0.18s, height 0.18s, border-color 0.18s, opacity 0.2s; }
-.curseur-anneau[data-sur="oui"] { width: 2.9rem; height: 2.9rem; border-color: var(--gain); background: radial-gradient(circle, color-mix(in srgb, var(--gain) 16%, transparent), transparent 70%); }
-.curseur-anneau[data-appui="oui"] { width: 1.5rem; height: 1.5rem; }
-.curseur-point { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); transition: opacity 0.2s; }
-@media (pointer: coarse), (prefers-reduced-motion: reduce) { .curseur-anneau, .curseur-point { display: none; } }
 
 /* ============================================================================
    Formation : parcours, leçons jouées, jeu, défi, et petites animations d'interface
@@ -1033,15 +795,15 @@ html:not([data-fond="aucun"])[data-modele="wallet"] .fiche-tete { background: li
 .lecon-ecran { animation-name: entree-droite; }
 .panneau { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
 .parcours-carte:hover, .fiche-tete:hover { transform: translateY(-2px); }
-html:not([data-modele="investissement"]):not([data-modele="terminal"]) .parcours-carte:hover { box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--gain) 45%, transparent); border-color: color-mix(in srgb, var(--gain) 40%, var(--trait)); }
+.parcours-carte:hover { box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--accent) 45%, transparent); border-color: color-mix(in srgb, var(--accent) 40%, var(--trait)); }
 
 .progression { display: grid; gap: 0.6rem; }
 .progression-niveau { display: flex; align-items: center; gap: 0.9rem; }
 .progression-niveau h2 { font-size: 1.4rem; }
 .progression-badge { width: 3rem; height: 3rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.3rem; color: var(--sur-couleur);
-  background: conic-gradient(from 200deg, var(--gain), var(--accent), var(--gain)); box-shadow: 0 0 22px color-mix(in srgb, var(--gain) 45%, transparent); }
+  background: conic-gradient(from 200deg, var(--accent), var(--accent), var(--accent)); box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 45%, transparent); }
 .progression-barre, .lecon-progres { height: 8px; border-radius: 999px; background: var(--trait-fort); overflow: hidden; flex: 1; }
-.progression-barre i, .lecon-progres i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--gain), var(--accent)); transition: width 0.5s cubic-bezier(.2,.8,.2,1); }
+.progression-barre i, .lecon-progres i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent)); transition: width 0.5s cubic-bezier(.2,.8,.2,1); }
 .progression-stats { display: flex; gap: 1.8rem; flex-wrap: wrap; }
 .progression-stats li { display: grid; }
 .progression-stats strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
@@ -1084,12 +846,12 @@ html:not([data-modele="investissement"]):not([data-modele="terminal"]) .parcours
 .lecon-enonce { font-size: clamp(1.1rem, 2vw, 1.35rem); font-weight: 600; line-height: 1.4; }
 .lecon-choix { display: grid; gap: 0.6rem; }
 .lecon-option { display: flex; align-items: center; gap: 0.8rem; width: 100%; text-align: left; padding: 0.8rem 1rem; border: 1.5px solid var(--trait-fort); border-radius: 12px; background: var(--nuit-2); color: var(--texte); cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.15s; }
-.lecon-option:hover:not(:disabled) { border-color: var(--gain); transform: translateX(3px); }
-.lecon-option[data-choisi="true"] { border-color: var(--gain); background: color-mix(in srgb, var(--gain) 14%, var(--nuit-2)); }
+.lecon-option:hover:not(:disabled) { border-color: var(--accent); transform: translateX(3px); }
+.lecon-option[data-choisi="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--nuit-2)); }
 .lecon-option:has(input:focus-visible), .lecon-option:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .lecon-option input { position: absolute; opacity: 0; pointer-events: none; }
 .lecon-lettre { flex: none; width: 1.8rem; height: 1.8rem; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; background: var(--nuit-3); color: var(--discret); }
-.lecon-option[data-choisi="true"] .lecon-lettre { background: var(--gain); color: var(--sur-couleur); }
+.lecon-option[data-choisi="true"] .lecon-lettre { background: var(--accent); color: var(--sur-couleur); }
 
 .resultat-lecon { position: relative; display: grid; gap: 0.8rem; justify-items: center; text-align: center; overflow: hidden; padding: 2rem 1.2rem; max-width: 46rem; margin: 0 auto; width: 100%; }
 .anneau { --p: 0%; width: 8rem; height: 8rem; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--perte) var(--p), var(--trait-fort) 0); position: relative; }
@@ -1117,7 +879,7 @@ html:not([data-modele="investissement"]):not([data-modele="terminal"]) .parcours
 .jeu-choix[data-etat="faux"] .lecon-lettre { background: var(--perte); color: var(--sur-couleur); }
 @keyframes secousse { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
 .jeu-explication { padding-left: 0.4rem; }
-.jeu-bilan { padding: 0.9rem 1rem; border-radius: 10px; background: color-mix(in srgb, var(--gain) 10%, transparent); border: 1px solid color-mix(in srgb, var(--gain) 40%, transparent); }
+.jeu-bilan { padding: 0.9rem 1rem; border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
 
 .defi-intro, .defi-suivi { display: grid; gap: 0.8rem; max-width: 46rem; margin: 0 auto; width: 100%; }
 .defi-regles { display: grid; gap: 0.5rem; padding-left: 1.1rem; list-style: disc; }
@@ -1126,7 +888,7 @@ html:not([data-modele="investissement"]):not([data-modele="terminal"]) .parcours
 .defi-badge[data-statut="reussi"] { border-color: var(--gain); color: var(--gain); }
 .defi-badge[data-statut="echoue"] { border-color: var(--perte); color: var(--perte); }
 .defi-jauge-barre { height: 12px; border-radius: 999px; background: var(--trait-fort); overflow: hidden; }
-.defi-jauge-barre i { display: block; height: 100%; background: linear-gradient(90deg, var(--gain), var(--accent)); transition: width 0.4s; }
+.defi-jauge-barre i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent)); transition: width 0.4s; }
 .defi-jauge-barre i[data-danger="true"] { background: linear-gradient(90deg, var(--accent), var(--perte)); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1134,18 +896,12 @@ html:not([data-modele="investissement"]):not([data-modele="terminal"]) .parcours
   .panneau, .lecon-option, .progression-barre i, .lecon-progres i { transition: none; }
 }
 /* Le menu Apparence reste opaque, même avec le fond animé */
-html .apparence-fenetre, html[data-modele] .apparence-fenetre { background: var(--nuit-2); -webkit-backdrop-filter: none; backdrop-filter: none; z-index: 60; }
 
 /* L'en-tête (et ses menus déroulants) passe au-dessus du contenu, même avec le flou du fond animé */
-.entete { position: relative; z-index: 50; }
 /* Bouton pour réduire le menu en icônes, toujours visible en haut du menu */
-.menu-bascule-haut { display: flex; align-items: center; gap: 0.6rem; margin: 0.6rem 0.5rem 0; padding: 0.5rem 0.7rem; border: 1px solid var(--trait-fort); border-radius: 10px; background: transparent; color: var(--discret); cursor: pointer; font: inherit; font-size: 0.8125rem; transition: color 0.15s, border-color 0.15s; }
-.menu-bascule-haut:hover { color: var(--texte); border-color: var(--accent); }
-.menu-lateral[data-replie="true"] .menu-bascule-haut { justify-content: center; padding-inline: 0; }
-@media (max-width: 62rem) { .menu-bascule-haut { display: none; } }
 
 /* Le menu du compte reste opaque et au-dessus de tout */
-html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filter: none; backdrop-filter: none; z-index: 70; }
+.menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filter: none; backdrop-filter: none; z-index: 70; }
 
 /* Barre du haut : actions à droite en icônes seules, libellé au survol */
 .btn-rond { position: relative; width: 2.4rem; height: 2.4rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid var(--trait-fort); background: transparent; color: var(--texte); cursor: pointer; transition: background 0.15s, border-color 0.15s; }
@@ -1156,7 +912,6 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .btn-rond[aria-expanded="true"]::after { display: none; }
 .badge-rond { position: absolute; top: -4px; right: -4px; min-width: 1.15rem; height: 1.15rem; padding: 0 0.3rem; border-radius: 999px; background: var(--accent); color: var(--sur-couleur); font-size: 0.68rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
 .btn-rond-avatar { padding: 0; }
-.entete-droite { gap: 0.5rem; }
 @media (prefers-reduced-motion: reduce) { .btn-rond, .btn-rond::after { transition: none; } }
 
 
@@ -1203,7 +958,7 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .formule { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.8125rem; background: var(--nuit-3); border: 1px solid var(--trait); border-radius: 6px; padding: 0.5rem 0.7rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .badge-nature { display: inline-block; padding: 0.1rem 0.55rem; border-radius: 999px; font-size: 0.75rem; border: 1px solid var(--trait-fort); color: var(--discret); }
 .badge-risque { border-color: var(--perte); color: var(--perte); }
-.badge-performance { border-color: var(--gain); color: var(--gain); }
+.badge-performance { border-color: var(--accent); color: var(--accent); }
 .badge-technique { border-style: dashed; }
 .graphe-risque svg { width: 100%; height: auto; display: block; }
 .graphe-barre { fill: var(--barre); transition: opacity 0.2s ease; }
@@ -1213,7 +968,7 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .graphe-axe { stroke: var(--trait-fort); stroke-width: 1; }
 .graphe-repere-var { stroke: var(--perte); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .graphe-repere-cvar, .graphe-droite { stroke: var(--accent); stroke-width: 1.5; }
-.graphe-point { fill: var(--gain); opacity: 0.6; }
+.graphe-point { fill: var(--accent); opacity: 0.6; }
 .graphe-point:hover { opacity: 1; }
 .graphe-texte { fill: var(--discret); font-size: 10px; }
 .legende-risque { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.75rem; margin-top: 0.35rem; }
@@ -1257,9 +1012,28 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
   border-color: var(--trait-fort); transform: translateY(-1px); box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
 }
 /* Taille fluide selon la largeur de la carte : « 1 234 567,89 USD » tient sans être coupé. */
-.kpis-portefeuille .indicateur-valeur { font-size: clamp(1.1rem, 10cqi, 1.75rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.kpis-portefeuille .indicateur-grand .indicateur-valeur { font-size: clamp(1.5rem, 8.5cqi, 3rem); font-variant-numeric: tabular-nums; }
+.kpis-portefeuille .indicateur-valeur { font-size: clamp(1.1rem, 10cqi, 1.75rem); }
+.kpis-portefeuille .indicateur-grand .indicateur-valeur { font-size: clamp(1.5rem, 8.5cqi, 1.9rem); }
 .indicateur-unite { font-size: max(0.75rem, 0.45em); font-weight: 500; color: var(--discret); white-space: nowrap; }
+.niveau-risque { display: flex; align-items: center; gap: 0.45rem; font-size: 1.2rem; font-weight: 700; }
+.niveau-risque-faible { color: var(--ok); }
+.niveau-risque-modere { color: var(--alerte); }
+.niveau-risque-eleve { color: var(--perte); }
+.niveau-risque-aucun { color: var(--discret); }
+.reconciliation { display: block; }
+.carte-repartition { gap: 0.35rem; }
+.repartition-simple { display: grid; gap: 0.3rem; }
+.repartition-simple li { display: grid; gap: 0.12rem; }
+.repartition-simple li > div { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; }
+.repartition-simple li strong { font-variant-numeric: tabular-nums; }
+.repartition-simple-piste { display: block; height: 0.35rem; overflow: hidden; border-radius: 999px; background: var(--nuit-3); }
+.repartition-simple-piste > span { display: block; height: 100%; border-radius: inherit; background: var(--barre); }
+.journal-sections { display: grid; gap: 1rem; }
+.journal-section { min-width: 0; }
+.journal-section + .journal-section { border-top: 1px solid var(--trait); padding-top: 0.9rem; }
+.journal-section h3 { margin-bottom: 0.55rem; font-size: 0.95rem; }
+.portefeuille-courbe { min-width: 0; }
+.position-future { line-height: 1.5; }
 .indicateur-libelle { display: flex; align-items: center; gap: 0.35rem; }
 .info-carte { position: relative; display: inline-flex; }
 .info-bouton { width: 1.15rem; height: 1.15rem; border-radius: 50%; border: 1px solid var(--trait-fort); background: none; color: var(--discret);
@@ -1332,3 +1106,60 @@ html .menu-utilisateur .menu { background: var(--nuit-2); -webkit-backdrop-filte
 .choix-filtre button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 @media (max-width: 600px) { .panneau-tete:has(.choix-filtre) { flex-direction: column; align-items: flex-start; } }
 @media (prefers-reduced-motion: reduce) { .risque-rempli, .tuile rect { transition: none; } }
+
+/* Navigation simplifiée et barre de simulation regroupée */
+.menu-profil { width: min(22rem, calc(100vw - 2rem)); max-height: min(80vh, 42rem); overflow: auto; display: grid; gap: var(--esp-2); }
+.menu-profil .menu-info { margin: 0; }
+.menu-choix { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--esp-1); border: 0; border-top: 1px solid var(--trait); padding: var(--esp-2) 0 0; margin: 0; }
+.menu-choix legend { padding: 0 var(--esp-1); color: var(--discret); font-size: var(--t-xs); }
+.menu-choix button, .menu-profil > button, .menu-profil > a { display: block; width: 100%; padding: 0.5rem 0.65rem; border: 0; border-radius: var(--rayon-1); background: transparent; color: inherit; text-align: left; text-decoration: none; }
+.menu-choix button:hover, .menu-profil > button:hover, .menu-profil > a:hover { background: var(--trait); }
+.menu-choix button[aria-pressed="true"] { background: var(--surface-3); color: var(--texte); }
+.menu-choix .aide { grid-column: 1 / -1; margin: 0; }
+
+/* Marché : liste, graphique et ticket ; les outils secondaires sont repliés. */
+.page-marche { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; }
+.marche-selection { display: flex; align-items: center; gap: var(--esp-2); flex: none; padding: var(--esp-2) var(--esp-3); border-bottom: 1px solid var(--trait); }
+.marche-selection label { color: var(--discret); font-size: var(--t-s); }
+.marche-selection select { width: auto; min-width: 10rem; }
+.marche-zones { display: grid; flex: 1 1 0; min-height: 0; min-width: 0; grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr) minmax(18rem, var(--colonne-ordre)); }
+.marche-zones > .marches { min-width: 0; }
+.marche-zones > .centre { min-width: 0; min-height: 0; display: block; }
+.marche-zones > .centre > .graphique { height: 100%; min-width: 0; overflow: auto; }
+.marche-zones > .droite { min-width: 0; min-height: 0; overflow: auto; position: relative; z-index: 1; background: var(--nuit); }
+.graphique-tete { align-items: center; }
+.graphique-tete h1 { min-width: 0; }
+.graphique-suivre { margin-left: 0; }
+.bandeau-pause { align-self: flex-start; }
+.voir-portefeuille { display: block; padding: var(--esp-3) var(--esp-4); border-top: 1px solid var(--trait); text-align: center; }
+.ticket-options { margin: var(--esp-2) 0; border-top: 1px solid var(--trait); border-bottom: 1px solid var(--trait); }
+.ticket-options > summary { padding: var(--esp-2) 0; color: var(--discret); cursor: pointer; }
+.ticket-options[open] > summary { color: var(--texte); }
+.repliable { border-top: 1px solid var(--trait); }
+.repliable > summary { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-2); padding: var(--esp-3) var(--esp-4); color: var(--texte); cursor: pointer; list-style: none; }
+.repliable > summary::-webkit-details-marker { display: none; }
+.repliable > summary svg { color: var(--discret); transition: transform 0.15s ease; }
+.repliable[open] > summary svg { transform: rotate(180deg); }
+.repliable > .aide { margin: 0; padding: 0 var(--esp-4) var(--esp-2); }
+.repliable-contenu { padding: 0 var(--esp-4) var(--esp-4); }
+.repliable-contenu > .protection { padding-inline: 0; }
+.repliable-contenu > .protection:first-child { border-top: 0; }
+.repliable-contenu > .carnet { padding-inline: 0; }
+
+@media (max-width: 80rem) {
+  .marche-zones { grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr) minmax(17rem, 19rem); }
+}
+@media (max-width: 56.25rem) {
+  .page-marche { height: auto; min-height: 0; overflow: visible; }
+  .marche-zones { display: flex; flex-direction: column; min-height: 0; }
+  .marche-zones > .marches { max-height: 13rem; border: 0; border-bottom: 1px solid var(--trait); }
+  .marche-zones > .centre { display: block; }
+  .marche-zones > .centre > .graphique { height: auto; min-height: 26rem; overflow: visible; }
+  .marche-zones > .centre .graphique-zone { height: 20rem; flex: none; }
+  .marche-zones > .droite { overflow: visible; border: 0; border-top: 1px solid var(--trait); }
+  .ticket { position: relative; background: var(--nuit-2); }
+  .btn-ordre { position: sticky; bottom: 0; z-index: 4; box-shadow: var(--ombre-1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .repliable > summary svg { transition: none; }
+}

@@ -105,7 +105,7 @@ export default function DefiMars2020() {
         <div className="fait"><dt>Date simulée</dt><dd>{jour ? dateLongue(`${jour}T00:00:00`) : "–"}</dd></div>
         {ouvert && jours !== null && jour! >= defi.debut && <div className="fait"><dt>Jours restants</dt><dd>{jours}</dd></div>}
         <div className="fait"><dt>Rendement depuis le départ</dt><dd className={(mesure?.rendement ?? 0) >= 0 ? "gain" : "perte"}>{(mesure?.rendement ?? 0) >= 0 ? "▲ " : "▼ "}{pctSigne(mesure?.rendement ?? 0, 1)}</dd></div>
-        {mesure?.bench !== null && mesure?.bench !== undefined && <div className="fait"><dt>{hist?.benchmark === "^GSPC" ? "S&P 500" : hist?.benchmark ?? "Référence"} sur la même période</dt><dd>{pctSigne(mesure.bench, 1)}</dd></div>}
+        {mesure?.bench !== null && mesure?.bench !== undefined && <div className="fait"><dt>{hist?.benchmark_nom ?? "Référence"} sur la même période</dt><dd>{pctSigne(mesure.bench, 1)}</dd></div>}
       </dl>
 
       {ouvert && <p className="aide">{jour && jour < defi.debut ? "Avancez dans le temps jusqu'au départ du défi." : "Lancez la simulation et vérifiez vos positions. Le verdict tombe tout seul."} <Link href="/actions">Aller aux marchés</Link></p>}

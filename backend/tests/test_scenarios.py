@@ -182,7 +182,8 @@ def test_actualites_visibles_a_partir_de_8h_le_jour_de_parution(client, utilisat
     liste = client.get("/api/v1/actualites", headers=bob.h).json()["actualites"]
     assert len(liste) == 1 and liste[0]["sentiment"]["etiquette"] == "positif"
     assert liste[0]["impact"][0]["rendement_1j"] is None                                  # la séance du jour n'est pas terminée
-    aller(client, bob, "2020-01-15T12:00:00")                                             # retour en arrière : plus visible
+    r = client.post("/api/v1/horloge/aller-a", json={"instant": "2020-01-15T12:00:00", "recommencer": True}, headers=bob.h)
+    assert r.status_code == 200                                                           # reparti plus tôt : plus visible
     assert client.get("/api/v1/actualites", headers=bob.h).json()["actualites"] == []
 
 

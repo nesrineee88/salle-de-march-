@@ -55,6 +55,49 @@ def test_redemarrage_restaure_ordres_positions_executions_et_horloge(client, uti
     assert c2.delete(f"/api/v1/ordres/{attente['id']}", headers=u.h).json()["statut"] == "annule"
 
 
+def test_premiere_initialisation_distinguee_du_rechargement(client, utilisateur, ctx_test):
+    u = utilisateur()
+    bac = ctx_test.bac(u.id)
+    assert bac.etat_persistance == "aucune_sauvegarde"
+
+
+@pytest.mark.erreur_attendue
+def test_echec_de_lecture_bloque_et_ne_sauvegarde_pas_le_bac_vide(
+    client, utilisateur, base_test, univers_test, magasin_test, monkeypatch
+):
+    from fastapi.testclient import TestClient
+
+    u = utilisateur()
+    aller(client, u)
+    client.post("/api/v1/ordres", json=ordre(quantite=7), headers=u.h)
+
+    charger_reel = persistance.charger
+    with base_test.session() as session:
+        avant = charger_reel(session, u.id)
+
+    def panne_lecture(*a, **k):
+        raise RuntimeError("lecture indisponible")
+
+    def sauvegarde_inattendue(*a, **k):
+        pytest.fail("aucune sauvegarde ne doit être tentée après un échec de lecture")
+
+    monkeypatch.setattr(persistance, "charger", panne_lecture)
+    monkeypatch.setattr(persistance, "sauvegarder", sauvegarde_inattendue)
+
+    neuf = Contexte(univers_test, magasin_test, MoteurMarche(magasin_test, univers_test), base=base_test)
+    app.dependency_overrides[obtenir_contexte] = lambda: neuf
+    c2 = TestClient(app)
+
+    r = c2.get("/api/v1/portefeuille", headers=u.h)
+    assert r.status_code == 503
+    assert "n'a pas pu être restauré" in r.json()["detail"]
+
+    with base_test.session() as session:
+        apres = charger_reel(session, u.id)
+    assert apres["cash"] == pytest.approx(avant["cash"])
+    assert apres["positions"] == avant["positions"]
+
+
 def test_sauvegarde_seulement_quand_l_etat_change(client, utilisateur, monkeypatch):
     u = utilisateur()
     aller(client, u)
@@ -89,7 +132,7 @@ def test_reinitialiser_efface_aussi_la_base(client, utilisateur, base_test):
 
 
 @pytest.mark.erreur_attendue
-def test_une_panne_de_base_ne_bloque_pas_le_trading(client, utilisateur, monkeypatch):
+def test_une_panne_de_sauvegarde_est_annoncee_et_n_est_pas_durable(client, utilisateur, monkeypatch):
     u = utilisateur()
     aller(client, u)
 
@@ -98,7 +141,8 @@ def test_une_panne_de_base_ne_bloque_pas_le_trading(client, utilisateur, monkeyp
 
     monkeypatch.setattr(persistance, "sauvegarder", panne)
     r = client.post("/api/v1/ordres", json=ordre(), headers=u.h)
-    assert r.status_code == 201 and r.json()["statut"] == "execute"            # le trade a bien eu lieu
+    assert r.status_code == 503
+    assert "n'a pas pu être enregistrée durablement" in r.json()["detail"]
 
 
 def test_les_bacs_de_deux_utilisateurs_sont_enregistres_separement(client, utilisateur, base_test):

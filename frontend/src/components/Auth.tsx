@@ -6,7 +6,7 @@ import { connexion, erreurOauth, ErreurApi, fournisseursOauth, inscription } fro
 import { dateCourte } from "@/lib/format";
 import { REPERES } from "@/lib/reperes";
 import type { Utilisateur } from "@/lib/types";
-import BoutonTheme from "./BoutonTheme";
+import { Logo, MotSeance } from "./ui/Logo";
 
 function Google() {
   return (
@@ -41,7 +41,7 @@ function force(mdp: string): { niveau: 0 | 1 | 2 | 3 | 4; regles: { ok: boolean;
 const NOMS_FORCE = ["", "Faible", "Correct", "Bon", "Très bon"];
 
 const ATOUTS = [
-  { icone: BarChart3, titre: "Six ans de marchés à rejouer", texte: "Actions, crypto et matières premières, du 1er janvier 2018 au 30 octobre 2026. Vous choisissez la date et la vitesse." },
+  { icone: BarChart3, titre: "Près de huit ans de marchés à rejouer", texte: "Actions, crypto et matières premières, du 2 janvier 2019 au 30 octobre 2026. Vous choisissez la date et la vitesse." },
   { icone: GraduationCap, titre: "Apprenez sans risque", texte: "Capital virtuel, ordres réalistes, stress tests et formation guidée : les erreurs ne coûtent rien." },
   { icone: ShieldCheck, titre: "Un compte sécurisé", texte: "Mots de passe hachés, sessions révocables, journal d'audit. Connexion avec Google ou GitHub possible." },
 ];
@@ -89,9 +89,8 @@ export default function Auth({ onConnecte }: { onConnecte: (u: Utilisateur) => v
 
   return (
     <main className="auth">
-      <div className="auth-theme"><BoutonTheme /></div>
       <section className="auth-recit">
-        <p className="marque">Salle de marché</p>
+        <p className="seance-auth-marque"><Logo /><MotSeance /></p>
         <h1>Apprenez les marchés en les rejouant.</h1>
         <p className="auth-intro">Un simulateur de salle de marché pour comprendre, tester et décider, avec de l&apos;argent virtuel.</p>
         <ul className="auth-atouts">

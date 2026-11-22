@@ -20,9 +20,13 @@ from .direct.routes import routeur as routeur_direct
 from .credit.routes import routeur as routeur_credit
 from .formation.routes import routeur as routeur_formation
 from .ia.routes import routeur as routeur_ia
+from .jeu.routes import routeur as routeur_jeu
 from .stress.routes import routeur as routeur_stress
 from .actuariat.routes import routeur as routeur_actuariat
-from .contexte import Bac, Contexte, acces_bac, donnees_ou_erreur as _donnees_ou_503, obtenir_contexte  # noqa: F401  (ré-exportés pour les tests)
+from .contexte import (  # noqa: F401  (ré-exportés pour les tests)
+    Bac, Contexte, acces_bac, donnees_ou_erreur as _donnees_ou_503, instant_compte, obtenir_contexte, refuser_en_direct,
+    verrouiller_bac,
+)
 from .marche.horloge import FACTEURS_PREDEFINIS
 from .marche.stockage import DonneeIndisponible
 from .routes_admin_stats import routeur as routeur_admin_stats
@@ -34,6 +38,7 @@ from .utilisateurs.modeles import Utilisateur
 from .marche.profil import description_wikipedia
 from .utilisateurs.routes import exiger, routeur as routeur_utilisateurs
 from .utilisateurs.service import ErreurMetier
+from .xai.routes import routeur as routeur_xai
 
 app = FastAPI(title="Simulateur de salle de marché — API", version="0.2.0")
 app.include_router(routeur_utilisateurs)
@@ -48,6 +53,8 @@ app.include_router(routeur_formation)
 app.include_router(routeur_ia)
 app.include_router(routeur_admin_stats)
 app.include_router(routeur_actuariat)
+app.include_router(routeur_jeu)
+app.include_router(routeur_xai)
 
 
 @app.exception_handler(ErreurMetier)
@@ -143,8 +150,12 @@ def instantane(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depen
                               "derniere_cloture": c.derniere_cloture, "reference": c.reference_variation})
         horloge = {**bac.horloge.etat(), "facteurs_predefinis": FACTEURS_PREDEFINIS}
         en_direct = bac.direct
+        instant_rejeu = instant_compte(bac, t).isoformat(timespec="seconds")
+        if en_direct:                                  # l'horloge du rejeu attend ; l'écran suit l'heure réelle
+            horloge.update(maintenant=t.isoformat(timespec="seconds"), facteur=1.0, en_pause=False)
     return {
         "instant": t.isoformat(timespec="seconds"),
+        "instant_compte": instant_rejeu,               # date du portefeuille (figée pendant le Direct)
         "direct": en_direct,
         "direct_flux": ctx.direct.etat() if (en_direct and ctx.direct is not None) else None,
         "termine": t >= ctx.fin_simulation and not en_direct,   # la période rejouée est finie : le temps est arrêté
@@ -163,15 +174,10 @@ def lire_horloge(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Dep
         return {**bac.horloge.etat(), "facteurs_predefinis": FACTEURS_PREDEFINIS}
 
 
-def _refuser_en_direct(bac: Bac) -> None:
-    if bac.direct:
-        raise HTTPException(409, "Le mode Direct suit l'heure réelle : quittez le mode Direct pour piloter le temps.")
-
-
 @app.post("/api/v1/horloge/pause")
 def mettre_en_pause(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("marche.lire"))):
     with acces_bac(ctx, u) as (bac, _t):
-        _refuser_en_direct(bac)
+        refuser_en_direct(bac)
         bac.horloge.pause()
         return bac.horloge.etat()
 
@@ -179,7 +185,7 @@ def mettre_en_pause(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = 
 @app.post("/api/v1/horloge/reprendre")
 def reprendre(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("marche.lire"))):
     with acces_bac(ctx, u) as (bac, _t):
-        _refuser_en_direct(bac)
+        refuser_en_direct(bac)
         bac.horloge.reprendre()
         return bac.horloge.etat()
 
@@ -192,27 +198,39 @@ class CorpsFacteur(BaseModel):
 def regler_facteur(corps: CorpsFacteur, ctx: Contexte = Depends(obtenir_contexte),
                    u: Utilisateur = Depends(exiger("marche.lire"))):
     with acces_bac(ctx, u) as (bac, _t):
-        _refuser_en_direct(bac)
+        refuser_en_direct(bac)
         bac.horloge.regler_facteur(corps.facteur)
         return bac.horloge.etat()
 
 
 class CorpsAllerA(BaseModel):
     instant: datetime
+    recommencer: bool = False      # repart avec le capital initial à cette date (seul moyen de reculer)
 
 
 @app.post("/api/v1/horloge/aller-a")
 def aller_a(corps: CorpsAllerA, ctx: Contexte = Depends(obtenir_contexte),
             u: Utilisateur = Depends(exiger("marche.lire"))):
+    """Avancer garde le portefeuille. Reculer est refusé : on connaîtrait la suite. Pour repartir d'une date passée,
+    `recommencer` efface le portefeuille et redémarre avec le capital initial."""
     instant = corps.instant.replace(tzinfo=None)
     debut = datetime.combine(ctx.univers.debut, time(0, 0))
     fin = datetime.combine(ctx.univers.fin, time(23, 59, 59))
     if not (debut <= instant <= fin):
         raise HTTPException(422, f"L'instant doit être entre {debut.isoformat()} et {fin.isoformat()}.")
-    with acces_bac(ctx, u) as (bac, _t):
-        _refuser_en_direct(bac)
+    if corps.recommencer:
+        with verrouiller_bac(ctx, u.id) as ancien:
+            refuser_en_direct(ancien)
+            ctx.reinitialiser(u.id).horloge.aller_a(instant)
+        with acces_bac(ctx, u) as (bac, _t):
+            return bac.horloge.etat()
+    with acces_bac(ctx, u) as (bac, t):
+        refuser_en_direct(bac)
+        if instant < t.replace(microsecond=0):
+            raise HTTPException(409, "On ne recule pas dans le temps avec le même portefeuille : on connaîtrait la suite. "
+                                     "Choisissez « Recommencer à cette date » pour repartir avec le capital initial.")
         bac.horloge.aller_a(instant)
-        bac.salle.avancer(instant)        # les ordres en attente sont évalués jusqu'à la destination
+        ctx.avancer(u.id, bac, instant)   # chaque jour traversé : ordres, règles, point de la courbe
         return bac.horloge.etat()
 
 
@@ -231,6 +249,7 @@ def passer_ordre(corps: CorpsOrdre, ctx: Contexte = Depends(obtenir_contexte),
                  u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     """Un ordre refusé pour une raison métier est renvoyé avec statut « rejete » et son motif."""
     with acces_bac(ctx, u) as (bac, t):
+        refuser_en_direct(bac, "passer un ordre")
         ordre = bac.salle.passer_ordre(
             bac.compte_id, corps.symbole, corps.sens, corps.quantite, t,
             type=corps.type, prix_limite=corps.prix_limite, prix_stop=corps.prix_stop)
@@ -247,6 +266,7 @@ def lister_ordres(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = De
 def annuler_ordre(ordre_id: int, ctx: Contexte = Depends(obtenir_contexte),
                   u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     with acces_bac(ctx, u) as (bac, _t):
+        refuser_en_direct(bac, "annuler un ordre")
         try:
             return ordre_en_dict(bac.salle.annuler_ordre(bac.compte_id, ordre_id))
         except KeyError as exc:
@@ -268,12 +288,23 @@ def executions(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depen
 @app.get("/api/v1/portefeuille")
 def portefeuille(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     with acces_bac(ctx, u) as (bac, t):
-        return bac.salle.valorisation(bac.compte_id, t)
+        t = instant_compte(bac, t)
+        valeur = bac.salle.valorisation(bac.compte_id, t)
+        executions = bac.salle.compte(bac.compte_id).executions
+        for position in valeur["positions"]:
+            achats_futurs = [
+                e.instant for e in executions
+                if e.symbole == position["symbole"] and e.sens == "achat" and e.instant > t
+            ]
+            date_future = min(achats_futurs) if achats_futurs else None
+            position["achetee_apres_t"] = date_future is not None
+            position["achetee_apres_t_le"] = date_future.isoformat(timespec="seconds") if date_future else None
+        return valeur
 
 
 @app.post("/api/v1/bac/reinitialiser")
 def reinitialiser_bac(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     """Repart de zéro : capital initial, aucun ordre, horloge au début de la fenêtre et en pause."""
-    with ctx.bac(u.id).verrou:
+    with verrouiller_bac(ctx, u.id):
         bac = ctx.reinitialiser(u.id)
         return {"compte_id": bac.compte_id, **bac.horloge.etat()}

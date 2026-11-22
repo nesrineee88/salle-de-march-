@@ -27,6 +27,7 @@ class BaseUtilisateurs:
         from ..trading import persistance  # noqa: F401
         from ..scenarios import modeles as _scenarios  # noqa: F401
         from ..formation import modeles as _formation  # noqa: F401
+        from ..jeu import modeles as _jeu  # noqa: F401
 
         # Développement : les tables manquantes sont créées automatiquement.
         # Production (SDM_ENV=production) : le schéma est géré uniquement par `alembic upgrade head`.

@@ -19,7 +19,8 @@ AVERTISSEMENTS = [
     "Les cours des actions américaines sont généralement différés d'environ 15 minutes.",
     "Les heures d'ouverture des actions sont fixes (14 h 30 à 21 h UTC) : elles sont décalées d'une heure pendant l'heure d'été américaine.",
     "Les crises injectées par l'administrateur ne s'appliquent pas aux prix en direct.",
-    "Le mode Direct n'est pas conservé au redémarrage du serveur : vous reviendrez dans la période rejouée.",
+    "Le Direct est en lecture seule : aucun ordre, et votre portefeuille reste figé à la date de votre rejeu.",
+    "Le mode Direct n'est pas conservé au redémarrage du serveur : vous retrouverez la date de votre rejeu.",
 ]
 
 
@@ -53,12 +54,10 @@ def activer(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(
     if not ctx.magasin.a_du_direct():
         raise HTTPException(503, f"Les prix en direct sont indisponibles ({flux.erreur or 'aucune réponse'}). "
                                  "Vérifiez que le serveur a accès à Internet (Yahoo Finance), puis réessayez.")
-    from ..contexte import maintenant_utc
     with acces_bac(ctx, u) as (bac, _t):
-        bac.direct = True
-        bac.horloge.regler_facteur(1.0)
-        bac.horloge.aller_a(maintenant_utc())
-        bac.horloge.reprendre()
+        if not bac.direct:
+            bac.horloge.pause()               # le rejeu attend exactement où il est ; le marché, lui, passe à l'heure réelle
+            bac.direct = True
     flux.inscrire(u.id)
     return {"actif": True, "flux": flux.etat(), "avertissements": AVERTISSEMENTS}
 
@@ -66,9 +65,7 @@ def activer(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(
 @routeur.post("/quitter")
 def quitter(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("marche.lire"))):
     with acces_bac(ctx, u) as (bac, _t):
-        bac.direct = False
-        bac.horloge.aller_a(ctx.fin_simulation)
-        bac.horloge.pause()
+        bac.direct = False                    # l'horloge du rejeu n'a pas bougé : on retrouve sa date
     if ctx.direct is not None:
         ctx.direct.retirer(u.id)
     return {"actif": False}

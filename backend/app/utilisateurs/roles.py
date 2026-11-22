@@ -9,6 +9,8 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "trading.levier": frozenset({TRADER, ADMIN}),   # réservé aux modules avancés (Sprint 3)
     "ia.utiliser": frozenset({TRADER, FORMATEUR, ADMIN}),
     "formation.suivre": TOUS,
+    "jeu.jouer": TOUS,                              # compte de jeu séparé du portefeuille
+    "xai.demander": TOUS,                           # assistant explicable, lecture seule
     "formation.gerer": frozenset({FORMATEUR, ADMIN}),
     "classe.voir": frozenset({FORMATEUR, ADMIN}),
     "admin.utilisateurs": frozenset({ADMIN}),

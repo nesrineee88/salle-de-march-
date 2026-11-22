@@ -75,6 +75,15 @@ class MoteurMarche:
             debut, fin = (datetime.combine(jour, h) for h in actif.session_utc)
         return debut, fin, self._chemin(actif, jour, barre)
 
+    def bornes_du_jour(self, symbole: str, jour: date) -> tuple[float, float] | None:
+        """(plus bas, plus haut) de la séance, pour l'évaluation des ordres pendant un saut ; None si le marché n'a pas coté.
+        À usage interne : jamais servi à l'écran, ce serait le futur."""
+        try:
+            barre = self._magasin.barre_du_jour(symbole, jour)
+        except DonneeIndisponible:
+            return None
+        return (float(barre["low"]), float(barre["high"])) if barre else None
+
     def invalider(self) -> None:
         """Vide le cache des chemins de ticks (à appeler quand les prix servis changent, par exemple après un scénario de crise)."""
         self._chemins.clear()

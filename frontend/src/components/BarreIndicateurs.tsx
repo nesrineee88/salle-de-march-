@@ -1,7 +1,6 @@
 "use client";
 
-import { AIDE, couleurs, LIBELLES, TOUS } from "@/lib/indicateurs";
-import { useTheme } from "@/lib/theme";
+import { AIDE, COULEURS, LIBELLES, TOUS } from "@/lib/indicateurs";
 import type { CleIndicateur, Indicateurs } from "@/lib/types";
 import type { Mode } from "./Contexte";
 
@@ -18,7 +17,6 @@ function Cle({ couleur }: { couleur: string }) {
 
 /** Cases à cocher des indicateurs, légende des courbes affichées et, en mode Apprenant, une explication par indicateur. */
 export default function BarreIndicateurs({ choix, onChange, mode, parametres }: Props) {
-  const COULEURS = couleurs(useTheme());
   const bascule = (k: CleIndicateur) => onChange(choix.includes(k) ? choix.filter((x) => x !== k) : [...choix, k]);
   const p = parametres;
   const legende: { couleur: string; texte: string }[] = [];

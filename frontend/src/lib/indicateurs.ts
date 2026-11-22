@@ -1,23 +1,12 @@
-import type { Theme } from "./theme";
 import type { CleIndicateur } from "./types";
 
-/** Couleurs des indicateurs, ordre magenta, violet, aqua de la palette « dataviz », validées avec son script :
- *  - thème sombre (fond #0B1620) : toutes les vérifications passent ;
- *  - thème clair (fond blanc) : toutes passent, sauf le contraste du magenta et de l'aqua (2,7 et 2,8 contre 3 demandé),
- *    compensé par la légende nommée sous le graphique (règle de « relief » de la méthode).
- *  Elles évitent le bleu et l'orange, déjà pris par les bougies. */
-const SOMBRE = {
-  sma_courte: "#d55181", sma_longue: "#9085e9", ema: "#199e70", bollinger: "#7e93a6",
-  rsi: "#9085e9", macd: "#9085e9", macd_signal: "#199e70",
-  histogramme_haut: "rgba(91, 174, 255, 0.55)", histogramme_bas: "rgba(255, 146, 85, 0.55)",
+/** Couleurs des indicateurs sur le fond navy de Séance : or, violet, bleu, magenta.
+ *  Elles évitent le menthe et le corail des bougies, et le cyan réservé à ce qui se clique. */
+export const COULEURS = {
+  sma_courte: "#b98a14", sma_longue: "#8b7cf0", ema: "#4c86e8", bollinger: "#7e93a6",
+  rsi: "#8b7cf0", macd: "#8b7cf0", macd_signal: "#b98a14",
+  histogramme_haut: "rgba(47, 165, 138, 0.6)", histogramme_bas: "rgba(229, 98, 94, 0.6)",
 };
-const CLAIR = {
-  sma_courte: "#e87ba4", sma_longue: "#6250d6", ema: "#1baf7a", bollinger: "#7a8a99",
-  rsi: "#6250d6", macd: "#6250d6", macd_signal: "#1baf7a",
-  histogramme_haut: "rgba(15, 111, 208, 0.5)", histogramme_bas: "rgba(194, 74, 20, 0.5)",
-};
-export type CouleursIndicateurs = typeof SOMBRE;
-export const couleurs = (theme: Theme): CouleursIndicateurs => (theme === "clair" ? CLAIR : SOMBRE);
 
 export const TOUS: CleIndicateur[] = ["sma", "ema", "bollinger", "rsi", "macd"];
 export const CLE_STOCKAGE = "sdm.indicateurs";

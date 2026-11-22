@@ -23,7 +23,8 @@ from .utilisateurs.modeles import Utilisateur
 
 journal = logging.getLogger("salle_de_marche")
 INTERVALLE_SAUVEGARDE_HORLOGE_S = 30.0       # horloge en marche : instant enregistré au plus toutes les 30 s
-INTERVALLE_HISTORIQUE = timedelta(days=1)    # un point de valeur au plus par jour simulé (et un à chaque transaction)
+FIN_DE_JOURNEE = time(23, 59, 59)
+PAS_TRAVERSEE_S = 900.0                      # ordres et règles revus tous les quarts d'heure pendant un saut de plusieurs jours
 
 
 def maintenant_utc() -> datetime:
@@ -53,7 +54,8 @@ class Bac:
     derniere_sauvegarde: float = 0.0
     historique: list[dict] = field(default_factory=list)        # points de valeur du portefeuille, un par jour simulé
     version_historique: int = -1                                # version du compte au dernier point enregistré
-    direct: bool = False                                        # mode Direct : l'horloge suit l'heure réelle (non conservé au redémarrage)
+    direct: bool = False                                        # mode Direct, en lecture seule : le marché suit l'heure réelle, le compte et l'horloge du rejeu sont figés
+    etat_persistance: str = "nouveau"                           # nouveau, restauré, aucune_sauvegarde, erreur_lecture
 
 
 @dataclass
@@ -99,15 +101,22 @@ class Contexte:
                     historique = persistance.lire_historique(session, utilisateur_id)
             except Exception:
                 journal.exception("Lecture du bac à sable impossible (utilisateur %s)", utilisateur_id)
+                bac.etat_persistance = "erreur_lecture"
         if etat is not None:
             salle.importer(compte_id, etat)
             # Après un redémarrage, le temps simulé reprend à l'instant enregistré, en pause.
-            bac.horloge = HorlogeSimulation(
-                min(datetime.fromisoformat(etat["horloge_instant"]), self.fin_simulation), facteur=etat["horloge_facteur"], en_pause=True)
+            instant = min(datetime.fromisoformat(etat["horloge_instant"]), self.fin_simulation)
+            debut = datetime.combine(self.univers.debut, time(0, 0))
+            if instant < debut and not etat["executions"]:         # compte jamais utilisé, enregistré avant que le rejeu commence en 2019
+                instant = debut
+            bac.horloge = HorlogeSimulation(instant, facteur=etat["horloge_facteur"], en_pause=True)
             bac.executions_sauvees = len(etat["executions"])
             bac.signature_sauvee = self._signature(bac)
             bac.historique = historique
             bac.version_historique = salle.version
+            bac.etat_persistance = "restauré"
+        elif bac.etat_persistance != "erreur_lecture":
+            bac.etat_persistance = "aucune_sauvegarde" if restaurer and self.base is not None else "nouveau"
         return bac
 
     @staticmethod
@@ -119,6 +128,8 @@ class Contexte:
     def sauver_si_modifie(self, utilisateur_id: int, bac: Bac) -> None:
         """Enregistre l'état s'il a changé (ordre, exécution, horloge). À appeler avec le verrou du bac."""
         if self.base is None:
+            return
+        if bac.etat_persistance == "erreur_lecture":
             return
         signature = self._signature(bac)
         maintenant = temps.monotonic()
@@ -135,19 +146,53 @@ class Contexte:
             bac.signature_sauvee, bac.derniere_sauvegarde = signature, maintenant
         except Exception:
             journal.exception("Sauvegarde du bac à sable impossible (utilisateur %s) : nouvel essai à la prochaine requête", utilisateur_id)
+            raise HTTPException(
+                503,
+                "La modification n'a pas pu être enregistrée durablement. Aucune confirmation de transaction ne peut être donnée.",
+            ) from None
 
     # ------------------------------------------------------------------ historique de la valeur
-    def enregistrer_valeur(self, utilisateur_id: int, bac: Bac, t: datetime) -> None:
-        """Ajoute un point à la courbe de valeur : au plus un par jour simulé, plus un après chaque transaction."""
-        dernier = bac.historique[-1] if bac.historique else None
-        un_jour_passe = dernier is None or abs(t - datetime.fromisoformat(dernier["instant"])) >= INTERVALLE_HISTORIQUE
-        transaction = bac.salle.version != bac.version_historique
-        if not (un_jour_passe or transaction):
-            return
+    @staticmethod
+    def _point(bac: Bac, t: datetime) -> dict:
         valo = bac.salle.valorisation(bac.compte_id, t)
-        point = {"jour": t.date().isoformat(), "instant": t.isoformat(timespec="seconds"), "equity": valo["equity"],
-                 "cash": valo["cash"], "valeur_positions": valo["valeur_positions"]}
-        if dernier is not None and dernier["jour"] == point["jour"]:
+        return {"jour": t.date().isoformat(), "instant": t.isoformat(timespec="seconds"), "equity": valo["equity"],
+                "cash": valo["cash"], "valeur_positions": valo["valeur_positions"]}
+
+    def avancer(self, utilisateur_id: int, bac: Bac, t: datetime) -> None:
+        """Amène le compte à t en passant par CHAQUE jour : un saut d'un an donne un an de courbe, pas deux points.
+        Sans transaction ni ordre en attente, la valeur est le capital : il n'y a rien à enregistrer."""
+        dernier = bac.salle.dernier_instant
+        compte = bac.salle.compte(bac.compte_id)
+        if (dernier is None or t.date() <= dernier.date()
+                or not (compte.executions or any(o.ouvert for o in compte.ordres.values()))):
+            bac.salle.avancer(t)
+            return
+        points, jour = [], dernier.date()
+        while jour < t.date():
+            fin_jour = datetime.combine(jour, FIN_DE_JOURNEE)
+            if fin_jour > dernier:
+                bac.salle.avancer_journee(fin_jour, pas_s=PAS_TRAVERSEE_S)
+            points.append(self._point(bac, fin_jour))
+            jour += timedelta(days=1)
+        bac.salle.avancer(t)
+        bac.historique.extend(points)
+        if self.base is None:
+            return
+        try:
+            with self.base.session() as session:
+                persistance.enregistrer_points(session, utilisateur_id, points)
+        except Exception:
+            journal.exception("Enregistrement des jours traversés impossible (utilisateur %s)", utilisateur_id)
+
+    def enregistrer_valeur(self, utilisateur_id: int, bac: Bac, t: datetime) -> None:
+        """Ajoute un point à la courbe de valeur : un par jour simulé, remplacé après chaque transaction du même jour."""
+        dernier = bac.historique[-1] if bac.historique else None
+        nouveau_jour = dernier is None or dernier["jour"] != t.date().isoformat()
+        transaction = bac.salle.version != bac.version_historique
+        if not (nouveau_jour or transaction):
+            return
+        point = self._point(bac, t)
+        if not nouveau_jour:
             bac.historique[-1] = point                      # même jour : on remplace par la valeur la plus récente
         else:
             bac.historique.append(point)
@@ -169,25 +214,56 @@ class Contexte:
         return [par_jour[j] for j in sorted(par_jour)]
 
 
+def refuser_en_direct(bac: Bac, action: str = "piloter le temps") -> None:
+    if bac.direct:
+        raise HTTPException(409, f"Le mode Direct est en lecture seule et suit l'heure réelle : revenez au rejeu pour {action}.")
+
+
+def instant_compte(bac: Bac, t: datetime) -> datetime:
+    """Instant auquel se lit le PORTEFEUILLE : en Direct il reste figé à la date du rejeu, seul le marché est à l'heure réelle."""
+    return bac.horloge.maintenant() if bac.direct else t
+
+
+@contextmanager
+def verrouiller_bac(ctx: Contexte, utilisateur_id: int):
+    """Verrou du bac COURANT. Une requête qui attendait pendant une réinitialisation ne doit pas retrouver
+    l'ancien bac, puis le réenregistrer par-dessus le nouveau."""
+    while True:
+        bac = ctx.bac(utilisateur_id)
+        with bac.verrou:
+            if ctx.bac(utilisateur_id) is bac:
+                yield bac
+                return
+
+
 @contextmanager
 def acces_bac(ctx: Contexte, utilisateur: Utilisateur):
-    """Accès exclusif au bac de l'utilisateur, ordres en attente évalués à son instant simulé, sauvegarde à la sortie."""
-    bac = ctx.bac(utilisateur.id)
-    with bac.verrou:
-        if bac.direct:                                 # mode Direct : l'horloge est l'heure réelle, sans limite de fin
-            bac.horloge.aller_a(maintenant_utc())
-        t = bac.horloge.maintenant()
-        fin = ctx.fin_simulation
-        if t >= fin and not bac.direct:                # fin de la période rejouée : le temps s'arrête
-            bac.horloge.aller_a(fin)
-            bac.horloge.pause()
-            t = fin
-        bac.salle.avancer(t)
+    """Accès exclusif au bac de l'utilisateur, ordres en attente évalués à son instant simulé, sauvegarde à la sortie.
+    En Direct, t est l'heure réelle et le bac n'avance pas."""
+    with verrouiller_bac(ctx, utilisateur.id) as bac:
+        if bac.etat_persistance == "erreur_lecture":
+            raise HTTPException(
+                503,
+                "Le portefeuille sauvegardé n'a pas pu être restauré. Le portefeuille n'est pas modifiable tant que la base est inaccessible.",
+            )
+        if bac.direct:
+            t = maintenant_utc()
+        else:
+            t = bac.horloge.maintenant()
+            fin = ctx.fin_simulation
+            if t >= fin:                               # fin de la période rejouée : le temps s'arrête
+                bac.horloge.aller_a(fin)
+                bac.horloge.pause()
+                t = fin
+            ctx.avancer(utilisateur.id, bac, t)
         try:
-            ctx.enregistrer_valeur(utilisateur.id, bac, t)
+            if not bac.direct:
+                ctx.enregistrer_valeur(utilisateur.id, bac, t)
             yield bac, t
         finally:
-            ctx.enregistrer_valeur(utilisateur.id, bac, bac.horloge.maintenant())
+            if not bac.direct:
+                # jamais au-delà de la fin : une horloge en marche peut la dépasser pendant la requête
+                ctx.enregistrer_valeur(utilisateur.id, bac, min(bac.horloge.maintenant(), ctx.fin_simulation))
             ctx.sauver_si_modifie(utilisateur.id, bac)
 
 

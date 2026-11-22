@@ -57,7 +57,7 @@ export default function PageActualites() {
 
       <div className="grille-courbe">
         <section aria-label="Fil d'actualités" className="actu-fil">
-          {liste.length === 0 && <p className="vide panneau">Aucune actualité parue à votre date simulée. Faites avancer le temps, ou choisissez une date sur la frise (les repères historiques commencent en 2018).</p>}
+          {liste.length === 0 && <p className="vide panneau">Aucune actualité parue à votre date simulée. Faites avancer le temps, ou choisissez une date en haut de l'écran.</p>}
           {liste.map((a) => (
             <article key={a.id} className="panneau actu">
               <header className="actu-tete">

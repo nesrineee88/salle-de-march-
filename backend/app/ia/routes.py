@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ..contexte import Contexte, acces_bac, donnees_ou_erreur, obtenir_contexte
+from ..contexte import Contexte, acces_bac, donnees_ou_erreur, instant_compte, obtenir_contexte
 from ..trading.carnet import FRAIS_BPS, SPREAD_BPS
 from ..utilisateurs.modeles import Utilisateur
 from ..utilisateurs.routes import exiger
@@ -58,6 +58,7 @@ def agent(symbole: str, ctx: Contexte = Depends(obtenir_contexte), u: Utilisateu
 @routeur.get("/optimiser")
 def optimiser(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("ia.utiliser"))):
     with acces_bac(ctx, u) as (bac, t):
+        t = instant_compte(bac, t)
         positions = [p for p in bac.salle.valorisation(bac.compte_id, t)["positions"] if p["valeur"] > 0 and ctx.magasin.a_des_donnees(p["symbole"])]
         series = {p["symbole"]: ctx.magasin.barres_terminees(p["symbole"], t.date(), n=251)["close"] for p in positions}
     if len(positions) < 2:

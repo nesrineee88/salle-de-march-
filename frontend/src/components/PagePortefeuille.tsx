@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { lienActif } from "@/lib/actif";
-import { dateHeure, montant, montantSigne, nombre, pct, pctSigne, prix, quantite } from "@/lib/format";
+import { dateHeure, dateLongue, montant, montantSigne, nombre, pct, pctSigne, prix, quantite } from "@/lib/format";
 import { useLecture } from "@/lib/hooks";
 import { decouperPeriode, type CleePeriode } from "@/lib/portefeuille";
 import { LIBELLE_STATUT_REGLE, libelleRegle } from "@/lib/regles";
-import type { Analyse, HistoriqueValeur, Position, Trade } from "@/lib/types";
+import type { Analyse, HistoriqueValeur, Position, SyntheseTableau, Trade } from "@/lib/types";
 import { useMarche } from "./Contexte";
 import Correlations from "./Correlations";
+import { NOMS_NIVEAUX, raisonNiveau } from "@/lib/risque";
 import Courbe from "./Courbe";
 import FichesRisque from "./FichesRisque";
 import { DonutRepartition, PerformancesPositions } from "./GraphiquesPortefeuille";
@@ -18,6 +19,7 @@ import HistoriqueTransactions from "./HistoriqueTransactions";
 import Indicateur from "./Indicateur";
 import PanneauDiversification from "./PanneauDiversification";
 import { CartePositions, CascadeResultat, ChoixPeriode, RisqueSecteurs, SousLEau } from "./VisuelsPortefeuille";
+import BlocRepliable from "./ui/BlocRepliable";
 
 const STATUTS = {
   ok: { icone: "✓", titre: "Dans votre tolérance", classe: "jauge-ok" },
@@ -30,17 +32,43 @@ function fleche(n: number): string { return n > 0 ? "▲ " : n < 0 ? "▼ " : ""
 /** Une perte exprimée en nombre positif (0,03 = 3 %) : flèche et signe moins seulement s'il y a vraiment une perte. */
 function perte(n: number): string { return n > 1e-9 ? `▼ −${pct(n)}` : pct(n); }
 
-/** Mini-courbe de la valeur du portefeuille (au moins deux points). Décorative : la courbe complète est plus bas. */
-function MiniCourbe({ valeurs }: { valeurs: number[] }) {
-  const lo = Math.min(...valeurs), hi = Math.max(...valeurs);
-  const y = (v: number) => 2 + (1 - (hi === lo ? 0.5 : (v - lo) / (hi - lo))) * 26;
-  const d = valeurs.map((v, i) => `${i ? "L" : "M"}${((i / (valeurs.length - 1)) * 100).toFixed(2)},${y(v).toFixed(2)}`).join("");
-  const hausse = valeurs[valeurs.length - 1] >= valeurs[0];
+function raisonRisque(synthese: SyntheseTableau | null): string {
+  const r = synthese?.niveau_risque;
+  return r?.familles ? raisonNiveau(r) : "Le niveau sera calculé après votre premier achat.";
+}
+
+function CarteNiveauRisque({ synthese }: { synthese: SyntheseTableau | null }) {
+  const niveau = synthese?.niveau_risque.niveau;
   return (
-    <svg className={`mini-courbe-carte ${hausse ? "gain" : "perte"}`} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
-      <path d={`${d}L100,30L0,30Z`} className="mini-courbe-aire" />
-      <path d={d} className="mini-courbe-ligne" vectorEffect="non-scaling-stroke" />
-    </svg>
+    <article className="indicateur carte-risque">
+      <p className="indicateur-libelle">Niveau de risque</p>
+      {niveau
+        ? <p className={`niveau-risque niveau-risque-${niveau}`}><span aria-hidden="true">{niveau === "aucun" || niveau === "faible" ? "✓" : niveau === "eleve" ? "✕" : "!"}</span> {niveau === "aucun" ? "Pas de position" : NOMS_NIVEAUX[niveau]}</p>
+        : <p className="indicateur-valeur">Chargement…</p>}
+      <p className="indicateur-detail">{raisonRisque(synthese)}</p>
+    </article>
+  );
+}
+
+function CarteRepartition({ synthese }: { synthese: SyntheseTableau | null }) {
+  const lignes = synthese?.repartition_detail.marche ?? [];
+  return (
+    <article className="indicateur carte-repartition">
+      <p className="indicateur-libelle">Répartition</p>
+      {lignes.length > 0 ? (
+        <ul className="repartition-simple">
+          {lignes.map((ligne) => (
+            <li key={ligne.libelle}>
+              <div><span>{ligne.libelle}</span><strong>{pct(ligne.part, 0)}</strong></div>
+              <span className="repartition-simple-piste" role="meter" aria-valuemin={0} aria-valuemax={100}
+                aria-valuenow={Math.round(ligne.part * 100)} aria-label={`${ligne.libelle} : ${pct(ligne.part, 0)} du portefeuille`}>
+                <span style={{ width: `${Math.max(0, Math.min(1, ligne.part)) * 100}%` }} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="indicateur-detail">Chargement…</p>}
+    </article>
   );
 }
 
@@ -95,8 +123,8 @@ function Repartition({ analyse }: { analyse: Analyse | null }) {
 }
 
 function Journal({ trades }: { trades: Trade[] | null }) {
-  const { pf, ordres, execs, annuler, envoyer, regles, supprimerRegle, actifs } = useMarche();
-  const [onglet, setOnglet] = useState<"positions" | "historique" | "trades" | "ordres" | "executions" | "regles">("positions");
+  const { pf, ordres, annuler, envoyer, regles, supprimerRegle, actifs, derniereReussiteCompte } = useMarche();
+  const [onglet, setOnglet] = useState<"positions" | "historique" | "ordres-regles">("positions");
   const [fermeture, setFermeture] = useState<string | null>(null);
   const [messageFermeture, setMessageFermeture] = useState<{ texte: string; classe: "message-ok" | "erreur" | "notes" } | null>(null);
   const origines = new Map(ordres.map((o) => [o.id, o.origine]));
@@ -127,15 +155,16 @@ function Journal({ trades }: { trades: Trade[] | null }) {
   return (
     <section className="panneau panneau-tableau">
       <div className="onglets" role="tablist" aria-label="Détail du portefeuille">
-        <button role="tab" aria-selected={onglet === "positions"} className="onglet" onClick={() => setOnglet("positions")}>Positions ({pf?.positions.length ?? 0})</button>
-        <button role="tab" aria-selected={onglet === "historique"} className="onglet" onClick={() => setOnglet("historique")}>Historique des positions</button>
-        <button role="tab" aria-selected={onglet === "trades"} className="onglet" onClick={() => setOnglet("trades")}>Trades clôturés ({trades?.length ?? 0})</button>
-        <button role="tab" aria-selected={onglet === "ordres"} className="onglet" onClick={() => setOnglet("ordres")}>Ordres{ouverts.length > 0 ? ` (${ouverts.length} en attente)` : ""}</button>
-        <button role="tab" aria-selected={onglet === "executions"} className="onglet" onClick={() => setOnglet("executions")}>Historique des transactions ({execs.length})</button>
-        <button role="tab" aria-selected={onglet === "regles"} className="onglet" onClick={() => setOnglet("regles")}>Règles automatiques{actives > 0 ? ` (${actives} active${actives > 1 ? "s" : ""})` : ""}</button>
+        <button id="tab-positions" role="tab" aria-selected={onglet === "positions"} aria-controls="journal-panneau" className="onglet" onClick={() => setOnglet("positions")}>Positions ({pf?.positions.length ?? 0})</button>
+        <button id="tab-historique" role="tab" aria-selected={onglet === "historique"} aria-controls="journal-panneau" className="onglet" onClick={() => setOnglet("historique")}>Historique</button>
+        <button id="tab-ordres-regles" role="tab" aria-selected={onglet === "ordres-regles"} aria-controls="journal-panneau" className="onglet" onClick={() => setOnglet("ordres-regles")}>
+          Ordres et règles{ouverts.length > 0 || actives > 0 ? ` (${ouverts.length + actives})` : ""}
+        </button>
       </div>
-      <div className="tableau-defile" role="tabpanel">
-        {onglet === "positions" && (pf && pf.positions.length > 0 ? (
+      <div id="journal-panneau" className="tableau-defile" role="tabpanel" aria-labelledby={`tab-${onglet}`} tabIndex={0}>
+        {onglet === "positions" && (pf === null
+          ? <p className="chargement" role="status">Chargement des positions…</p>
+          : pf.positions.length > 0 ? (
           <table className="tableau">
             <thead><tr><th>Actif</th><th>Quantité</th><th>Prix moyen</th><th>Prix actuel</th><th>Valeur</th><th>Gain ou perte latent</th><th>Rendement</th><th>Poids</th><th>Actions</th></tr></thead>
             <tbody>
@@ -159,59 +188,84 @@ function Journal({ trades }: { trades: Trade[] | null }) {
               })}
             </tbody>
           </table>
-        ) : <p className="vide">Aucune position. <Link href="/actions">Ouvrez un marché</Link> pour passer un premier ordre.</p>)}
+          )
+          : <p className="vide">Aucune position. <Link href="/marche">Ouvrez le marché</Link> pour passer un premier ordre.</p>)}
         {onglet === "positions" && messageFermeture && <p className={messageFermeture.classe} role="status">{messageFermeture.texte}</p>}
 
-        {onglet === "trades" && (trades && trades.length > 0 ? (
-          <table className="tableau">
-            <thead><tr><th>Date simulée</th><th>Actif</th><th>Quantité</th><th>Prix d&apos;achat moyen</th><th>Prix de vente</th><th>Gain ou perte réalisé</th><th>Rendement</th><th>Frais</th></tr></thead>
-            <tbody>
-              {trades.map((t, i) => (
-                <tr key={`${t.instant}-${i}`}>
-                  <td>{dateHeure(t.instant)}</td><td>{t.symbole}</td><td>{quantite(t.quantite)}</td><td>{prix(t.prix_achat_moyen)}</td><td>{prix(t.prix_vente)}</td>
-                  <td className={ton(t.pnl)}>{fleche(t.pnl)}{montantSigne(t.pnl)}</td>
-                  <td className={t.rendement !== null ? ton(t.rendement) : undefined}>{t.rendement !== null ? `${fleche(t.rendement)}${pctSigne(t.rendement)}` : "–"}</td><td>{montant(t.frais)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="vide">Aucun trade clôturé : un trade est clôturé quand vous vendez une position.</p>)}
+        {onglet === "historique" && (
+          <div className="journal-sections">
+            <section className="journal-section" aria-labelledby="titre-historique-positions">
+              <h3 id="titre-historique-positions">Historique des positions</h3>
+              <HistoriquePositions />
+            </section>
+            <section className="journal-section" aria-labelledby="titre-trades-clotures">
+              <h3 id="titre-trades-clotures">Trades clôturés</h3>
+              {trades === null ? <p className="chargement">Chargement des trades…</p> : trades.length > 0 ? (
+                <table className="tableau">
+                  <thead><tr><th>Date simulée</th><th>Actif</th><th>Quantité</th><th>Prix d&apos;achat moyen</th><th>Prix de vente</th><th>Gain ou perte réalisé</th><th>Rendement</th><th>Frais</th></tr></thead>
+                  <tbody>
+                    {trades.map((t, i) => (
+                      <tr key={`${t.instant}-${i}`}>
+                        <td>{dateHeure(t.instant)}</td><td>{t.symbole}</td><td>{quantite(t.quantite)}</td><td>{prix(t.prix_achat_moyen)}</td><td>{prix(t.prix_vente)}</td>
+                        <td className={ton(t.pnl)}>{fleche(t.pnl)}{montantSigne(t.pnl)}</td>
+                        <td className={t.rendement !== null ? ton(t.rendement) : undefined}>{t.rendement !== null ? `${fleche(t.rendement)}${pctSigne(t.rendement)}` : "–"}</td><td>{montant(t.frais)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <p className="vide">Aucun trade clôturé pour le moment.</p>}
+            </section>
+          </div>
+        )}
 
-        {onglet === "ordres" && (ordres.length > 0 ? (
-          <table className="tableau">
-            <thead><tr><th>N°</th><th>Actif</th><th>Sens</th><th>Type</th><th>Quantité</th><th>Niveau</th><th>Prix moyen</th><th>Statut</th><th><span className="sr-only">Action</span></th></tr></thead>
-            <tbody>
-              {[...ordres].reverse().map((o) => (
-                <tr key={o.id}>
-                  <td>{o.id}</td><td>{o.symbole}</td><td>{o.sens === "achat" ? "Achat" : "Vente"}</td><td>{LIBELLE_TYPE[o.type]}{o.origine ? <span className="pastille" title="Placé par une règle automatique">auto</span> : null}</td>
-                  <td>{quantite(o.quantite_executee)} / {quantite(o.quantite)}</td><td>{prix(o.prix_limite ?? o.prix_stop)}</td><td>{prix(o.prix_moyen)}</td>
-                  <td title={o.motif ?? undefined}>{LIBELLE_STATUT[o.statut]}{o.statut === "rejete" && o.motif ? ` : ${o.motif}` : ""}</td>
-                  <td>{(o.statut === "en_attente" || o.statut === "partiel") && <button className="lien" onClick={() => void annuler(o.id)}>Annuler</button>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="vide">Aucun ordre pour le moment.</p>)}
-
-        {onglet === "historique" && <HistoriquePositions />}
-
-        {onglet === "executions" && <HistoriqueTransactions />}
-
-        {onglet === "regles" && (regles.length > 0 ? (
-          <table className="tableau tableau-regles">
-            <thead><tr><th>Actif</th><th>Règle</th><th>Se déclenche vers</th><th>Statut</th><th>Posée le</th><th>Résultat</th><th><span className="sr-only">Action</span></th></tr></thead>
-            <tbody>
-              {regles.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.symbole}</td><td>{libelleRegle(r)}</td><td>{r.niveau !== null ? prix(r.niveau) : "–"}</td>
-                  <td>{LIBELLE_STATUT_REGLE[r.statut]}</td><td>{r.cree_le ? dateHeure(r.cree_le) : "–"}</td>
-                  <td title={r.motif ?? undefined}>{r.motif ?? ""}</td>
-                  <td>{r.statut === "active" && <button className="lien" onClick={() => void supprimerRegle(r.id)}>Retirer</button>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : <p className="vide">Aucune règle automatique. Ouvrez un marché, achetez un actif, puis posez un stop-loss dans « Protection automatique ».</p>)}
+        {onglet === "ordres-regles" && (
+          <div className="journal-sections">
+            <section className="journal-section" aria-labelledby="titre-ordres">
+              <h3 id="titre-ordres">Ordres</h3>
+              {ordres.length > 0 ? (
+                <table className="tableau">
+                  <thead><tr><th>N°</th><th>Actif</th><th>Sens</th><th>Type</th><th>Quantité</th><th>Niveau</th><th>Prix moyen</th><th>Statut</th><th><span className="sr-only">Action</span></th></tr></thead>
+                  <tbody>
+                    {[...ordres].reverse().map((o) => (
+                      <tr key={o.id}>
+                        <td>{o.id}</td><td>{o.symbole}</td><td>{o.sens === "achat" ? "Achat" : "Vente"}</td><td>{LIBELLE_TYPE[o.type]}{o.origine ? <span className="pastille" title="Placé par une règle automatique">auto</span> : null}</td>
+                        <td>{quantite(o.quantite_executee)} / {quantite(o.quantite)}</td><td>{prix(o.prix_limite ?? o.prix_stop)}</td><td>{prix(o.prix_moyen)}</td>
+                        <td title={o.motif ?? undefined}>{LIBELLE_STATUT[o.statut]}{o.statut === "rejete" && o.motif ? ` : ${o.motif}` : ""}</td>
+                        <td>{(o.statut === "en_attente" || o.statut === "partiel") && <button className="lien" onClick={() => void annuler(o.id)}>Annuler</button>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : derniereReussiteCompte
+                ? <p className="vide">Aucun ordre pour le moment.</p>
+                : <p className="chargement" role="status">Chargement des ordres…</p>}
+            </section>
+            <section className="journal-section" aria-labelledby="titre-transactions">
+              <h3 id="titre-transactions">Transactions exécutées</h3>
+              <HistoriqueTransactions />
+            </section>
+            <section className="journal-section" aria-labelledby="titre-regles">
+              <h3 id="titre-regles">Règles automatiques</h3>
+              {regles.length > 0 ? (
+                <table className="tableau tableau-regles">
+                  <thead><tr><th>Actif</th><th>Règle</th><th>Se déclenche vers</th><th>Statut</th><th>Posée le</th><th>Résultat</th><th><span className="sr-only">Action</span></th></tr></thead>
+                  <tbody>
+                    {regles.map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.symbole}</td><td>{libelleRegle(r)}</td><td>{r.niveau !== null ? prix(r.niveau) : "–"}</td>
+                        <td>{LIBELLE_STATUT_REGLE[r.statut]}</td><td>{r.cree_le ? dateHeure(r.cree_le) : "–"}</td>
+                        <td title={r.motif ?? undefined}>{r.motif ?? ""}</td>
+                        <td>{r.statut === "active" && <button className="lien" onClick={() => void supprimerRegle(r.id)}>Retirer</button>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : derniereReussiteCompte
+                ? <p className="vide">Aucune règle automatique. Après un achat, vous pouvez configurer un stop-loss ou une prise de profit depuis le marché.</p>
+                : <p className="chargement" role="status">Chargement des règles…</p>}
+            </section>
+          </div>
+        )}
       </div>
     </section>
   );
@@ -220,122 +274,138 @@ function Journal({ trades }: { trades: Trade[] | null }) {
 export default function PagePortefeuille() {
   const { pf, inst, actifs } = useMarche();
   const [periode, setPeriode] = useState<CleePeriode>("tout");
-  const { donnees: analyse } = useLecture<Analyse>("/api/v1/portefeuille/analyse", 4000);
-  const { donnees: hist } = useLecture<HistoriqueValeur>("/api/v1/portefeuille/historique", 4000);
-  const { donnees: trades } = useLecture<Trade[]>("/api/v1/portefeuille/trades", 5000);
+  const { donnees: synthese, erreur: erreurSynthese, relire: relireSynthese } = useLecture<SyntheseTableau>("/api/v1/tableau-de-bord", 5000);
+  const { donnees: analyse, erreur: erreurAnalyse, relire: relireAnalyse } = useLecture<Analyse>("/api/v1/portefeuille/analyse", 5000);
+  const { donnees: hist, erreur: erreurHist, relire: relireHist } = useLecture<HistoriqueValeur>("/api/v1/portefeuille/historique", 5000);
+  const { donnees: trades, erreur: erreurTrades, relire: relireTrades } = useLecture<Trade[]>("/api/v1/portefeuille/trades", 5000);
   const perf = analyse?.performance;
   const risque = analyse?.risque;
   const rendement = pf && pf.capital_initial ? pf.pnl_total / pf.capital_initial : null;
   const points = useMemo(() => decouperPeriode(hist?.points ?? [], periode), [hist, periode]);
+  const erreurs = [erreurSynthese, erreurAnalyse, erreurHist, erreurTrades].filter(Boolean);
+  const reessayer = () => { void Promise.all([relireSynthese(), relireAnalyse(), relireHist(), relireTrades()]); };
+  const positionsFutures = pf?.positions.filter((position) => position.achetee_apres_t) ?? [];
 
   return (
     <main className="page">
       <header className="page-tete">
         <div>
           <h1>Portefeuille</h1>
-          <p className="aide">Un seul portefeuille pour les trois marchés (actions, cryptomonnaies, matières premières). Tout est calculé à la date simulée{inst ? ` du ${inst.instant.slice(0, 10).split("-").reverse().join("/")}` : ""}, sans jamais regarder le futur.</p>
+          <p className="aide">Valeur, résultat et positions à la date simulée{inst ? ` du ${inst.instant.slice(0, 10).split("-").reverse().join("/")}` : ""}.</p>
         </div>
       </header>
 
+      {erreurs.length > 0 && (
+        <p className="bandeau avertissement" role="status">
+          Certaines données n&apos;ont pas pu être actualisées; les dernières valeurs restent affichées. {erreurs[0]}
+          <button type="button" className="lien" onClick={reessayer}>Réessayer</button>
+        </p>
+      )}
+      {positionsFutures.length > 0 && (
+        <div className="bandeau avertissement position-future" role="status">
+          <strong>Position(s) achetée(s) après la date simulée :</strong>{" "}
+          {positionsFutures.map((position) => `${position.symbole}${position.achetee_apres_t_le ? ` (${dateLongue(position.achetee_apres_t_le)})` : ""}`).join(", ")}.
+          En revenant dans le temps, ces positions restent dans le portefeuille; revenez à leur date d&apos;achat pour revoir la situation correspondante.
+        </div>
+      )}
+
       <div className="kpis-conteneur">
         <section className="kpis kpis-portefeuille" aria-label="Résumé du portefeuille">
-          <Indicateur grand libelle="Valeur du portefeuille" valeur={pf ? montant(pf.equity) : "–"} unite="USD"
-            detail={pf ? `Capital de départ : ${montant(pf.capital_initial)} USD` : undefined}
-            explication="Liquidités plus valeur de toutes vos positions au prix actuel.">
-            {hist && hist.points.length >= 2 && <MiniCourbe valeurs={hist.points.map((x) => x.equity)} />}
-          </Indicateur>
-          <Indicateur libelle="Valeur des positions" valeur={pf ? montant(pf.equity - pf.cash) : "–"} unite="USD"
-            detail={pf && pf.equity ? `${pct((pf.equity - pf.cash) / pf.equity, 0)} du portefeuille` : undefined}
-            explication="Ce que valent vos actifs au prix actuel : valeur du portefeuille moins les liquidités." />
-          <Indicateur libelle="Liquidités" valeur={pf ? montant(pf.cash) : "–"} unite="USD"
-            detail={pf && pf.equity ? `${pct(pf.cash / pf.equity, 0)} du portefeuille` : undefined}
-            explication="L'argent non investi, disponible pour acheter." />
-          <Indicateur libelle="Performance" valeur={rendement !== null ? `${fleche(rendement)}${pctSigne(rendement)}` : "–"} ton={rendement !== null ? ton(rendement) : undefined}
-            detail={pf ? <>Résultat total : {montantSigne(pf.pnl_total)} USD<br />dont frais {montantSigne(-pf.frais_cumules)} USD</> : undefined}
-            infobulle={{ simple: "De combien la valeur de votre portefeuille a monté ou baissé depuis le départ, frais compris.",
-              formule: "Performance = Résultat total / Capital de départ ; Résultat total = Réalisé + Latent − Frais" }} />
-          <Indicateur libelle="Réalisé" valeur={pf ? `${fleche(pf.pnl_realise)}${montantSigne(pf.pnl_realise)}` : "–"} unite="USD" ton={pf ? ton(pf.pnl_realise) : undefined}
-            infobulle={{ simple: "Gains et pertes déjà encaissés par vos ventes (avant frais).",
-              formule: "Réalisé = Σ (prix de vente − prix de revient moyen) × quantité vendue" }} />
-          <Indicateur libelle="Latent" valeur={pf ? `${fleche(pf.pnl_latent)}${montantSigne(pf.pnl_latent)}` : "–"} unite="USD" ton={pf ? ton(pf.pnl_latent) : undefined}
-            infobulle={{ simple: "Ce que vous gagneriez ou perdriez en vendant tout maintenant : cela peut encore changer.",
-              formule: "Latent = Σ (prix actuel − prix de revient moyen) × quantité détenue" }} />
-          <Indicateur libelle="Frais payés" valeur={pf ? `${fleche(-pf.frais_cumules)}${montantSigne(-pf.frais_cumules)}` : "–"} unite="USD" ton={pf && pf.frais_cumules > 0 ? "perte" : undefined}
-            infobulle={{ simple: "Les commissions payées à chaque achat et à chaque vente : elles réduisent toujours le résultat.",
-              formule: "Frais = Σ taux de frais × |prix| × quantité, pour chaque exécution" }} />
+          <CarteNiveauRisque synthese={synthese} />
+          <Indicateur libelle="Valeur totale" valeur={pf ? montant(pf.equity) : "Chargement…"} unite={pf ? "USD" : undefined}
+            detail={pf ? <>
+              <span className="reconciliation">= {montant(pf.cash)} liquidités + {montant(pf.valeur_positions)} positions</span>
+              {pf.cash - pf.cash_disponible > 0.005 && <><br />{montant(pf.cash - pf.cash_disponible)} USD réservés par des ordres en attente</>}
+            </> : undefined}
+            explication="La valeur totale correspond aux liquidités plus la valeur de vos positions." />
+          <Indicateur libelle="Gain ou perte depuis le départ"
+            valeur={pf ? `${fleche(pf.pnl_total)}${montantSigne(pf.pnl_total)}` : "Chargement…"} unite={pf ? "USD" : undefined}
+            ton={pf ? ton(pf.pnl_total) : undefined}
+            detail={pf ? <>{rendement !== null && `${pctSigne(rendement)} depuis le départ`}<br />Frais payés : {montant(pf.frais_cumules)} USD</> : undefined}
+            explication="La différence entre la valeur totale et le capital de départ; les frais sont déjà déduits." />
+          <CarteRepartition synthese={synthese} />
         </section>
       </div>
 
-      <div className="grille-2">
-        <CartePositions pf={pf} actifs={actifs} />
-        <CascadeResultat pf={pf} />
-      </div>
-
-      <div className="grille-courbe">
-        <section className="panneau" aria-labelledby="titre-courbe">
-          <header className="panneau-tete"><h2 id="titre-courbe">Valeur au fil du temps</h2><ChoixPeriode valeur={periode} changer={setPeriode} /></header>
-          {hist ? <Courbe points={points} nomReference="S&P 500" {...(periode === "tout" ? { capitalInitial: hist.capital_initial } : { capitalInitial: points[0]?.equity ?? hist.capital_initial, libelleDepart: "de la valeur au début de la période" })} /> : <p className="chargement">Chargement…</p>}
-          <h3 className="sous-titre">Plongée : baisse depuis le sommet (drawdown)</h3>
-          {hist && <SousLEau points={points} />}
-        </section>
-        <ProfilVsRisque analyse={analyse} />
-      </div>
-
-      <section aria-labelledby="titre-indicateurs">
-        <h2 id="titre-indicateurs" className="titre-section">Indicateurs de risque</h2>
-        <div className="kpis kpis-risque">
-          <Indicateur libelle="VaR 95 %, un jour" valeur={risque ? perte(risque.var) : "–"} ton={risque && risque.var > 1e-9 ? "perte" : undefined}
-            detail={risque ? `soit ${montant(risque.var_montant)} sur ${risque.jours} jours d'historique` : undefined}
-            explication="Les jours « normaux » (95 %), vous ne perdez pas plus que cela. Les 5 % de jours restants sont pires." />
-          <Indicateur libelle="CVaR 95 %, un jour" valeur={risque ? perte(risque.cvar) : "–"} ton={risque && risque.cvar > 1e-9 ? "perte" : undefined}
-            detail={risque ? `soit ${montant(risque.cvar_montant)}` : undefined}
-            explication="La perte moyenne pendant ces 5 % de pires jours : la VaR dit où ça commence, la CVaR dit jusqu'où ça peut aller." />
-          <Indicateur libelle="Volatilité annualisée" valeur={perf?.volatilite_annuelle != null ? pct(perf.volatilite_annuelle) : "–"}
-            explication="La nervosité de votre portefeuille. Plus elle est haute, plus sa valeur bouge fort dans les deux sens." />
-          <Indicateur libelle="Ratio de Sharpe" valeur={perf?.sharpe != null ? nombre(perf.sharpe, 2) : "–"}
-            explication="Rendement annualisé divisé par la volatilité (taux sans risque posé à 0). Au-dessus de 1, le risque pris a été bien payé." />
-          <Indicateur libelle="Ratio de Sortino" valeur={perf?.sortino != null ? nombre(perf.sortino, 2) : "–"}
-            explication="Comme le Sharpe, mais seules les baisses comptent comme du risque : les hausses ne sont pas punies." />
-          <Indicateur libelle="Perte maximale subie" valeur={perf ? perte(perf.drawdown_max) : "–"} ton={perf && perf.drawdown_max > 1e-9 ? "perte" : undefined}
-            explication="La pire chute de votre portefeuille depuis un de ses sommets (« drawdown maximal »)." />
-          <Indicateur libelle="Perte depuis le dernier sommet" valeur={perf ? perte(perf.drawdown_courant) : "–"} ton={perf && perf.drawdown_courant > 1e-9 ? "perte" : undefined}
-            explication="Où vous en êtes aujourd'hui par rapport à votre plus haut. Zéro signifie que vous êtes à un sommet." />
-          <Indicateur libelle="Rendement annualisé" valeur={perf?.rendement_annuel != null ? pctSigne(perf.rendement_annuel) : "–"} ton={perf?.rendement_annuel != null ? ton(perf.rendement_annuel) : undefined}
-            explication="Ce que rapporterait votre rythme actuel sur une année complète. Peu fiable sur une courte période." />
-        </div>
-        {analyse && analyse.avertissements.length > 0 && (
-          <ul className="notes" aria-label="À savoir">
-            {analyse.avertissements.map((a) => <li key={a}>{a}</li>)}
-          </ul>
-        )}
+      <section className="panneau portefeuille-courbe" aria-labelledby="titre-courbe">
+        <header className="panneau-tete"><h2 id="titre-courbe">Valeur au fil du temps</h2><ChoixPeriode valeur={periode} changer={setPeriode} /></header>
+        {hist
+          ? <Courbe points={points} nomReference={hist.benchmark_nom ?? "S&P 500"} {...(periode === "tout" ? { capitalInitial: hist.capital_initial } : { capitalInitial: points[0]?.equity ?? hist.capital_initial, libelleDepart: "de la valeur au début de la période" })} />
+          : erreurHist
+            ? <p className="erreur" role="alert">{erreurHist}</p>
+            : <p className="chargement" role="status">Chargement de la courbe…</p>}
       </section>
 
-      <FichesRisque analyse={analyse} />
-
-      <div className="grille-2">
-        <Repartition analyse={analyse} />
-        <section className="panneau">
-          <header className="panneau-tete"><h2>Performance par position</h2></header>
-          <PerformancesPositions lignes={analyse?.repartition_detail.position ?? []} />
-        </section>
-      </div>
-
-      <div className="grille-2">
-        <RisqueSecteurs analyse={analyse} pf={pf} />
-        <PanneauDiversification analyse={analyse} />
-      </div>
-
-      <div className="grille-2">
-        <section className="panneau">
-          <header className="panneau-tete"><h2>Corrélations entre vos actifs</h2></header>
-          {analyse?.correlations ? (
-            <Correlations symboles={analyse.correlations.symboles} matrice={analyse.correlations.matrice} />
-          ) : <p className="vide">Détenez au moins deux actifs et laissez passer quelques semaines de simulation pour voir comment ils bougent ensemble.</p>}
-          <p className="aide">Deux actifs très corrélés (bleu foncé) montent et baissent ensemble : les détenir tous les deux diversifie peu.</p>
-        </section>
-      </div>
-
       <Journal trades={trades} />
+
+      <BlocRepliable titre="Détails du risque" aide="Indicateurs et graphiques avancés. Les calculs sont basés sur les données historiques disponibles."
+        cleMemoire="portefeuille-risque">
+        <div className="grille-courbe">
+          <ProfilVsRisque analyse={analyse} />
+          <section aria-labelledby="titre-indicateurs">
+            <h2 id="titre-indicateurs" className="titre-section">Indicateurs de risque et de performance</h2>
+            <div className="kpis kpis-risque">
+              <Indicateur libelle="VaR 95 %, un jour" valeur={risque ? perte(risque.var) : "–"} ton={risque && risque.var > 1e-9 ? "perte" : undefined}
+                detail={risque ? `soit ${montant(risque.var_montant)} sur ${risque.jours} jours d'historique` : undefined}
+                explication="Les jours « normaux » (95 %), vous ne perdez pas plus que cela. Les 5 % de jours restants sont pires." />
+              <Indicateur libelle="CVaR 95 %, un jour" valeur={risque ? perte(risque.cvar) : "–"} ton={risque && risque.cvar > 1e-9 ? "perte" : undefined}
+                detail={risque ? `soit ${montant(risque.cvar_montant)}` : undefined}
+                explication="La perte moyenne pendant ces 5 % de pires jours : la VaR dit où ça commence, la CVaR dit jusqu'où ça peut aller." />
+              <Indicateur libelle="Volatilité annualisée" valeur={perf?.volatilite_annuelle != null ? pct(perf.volatilite_annuelle) : "–"}
+                explication="La nervosité de votre portefeuille. Plus elle est haute, plus sa valeur bouge fort dans les deux sens." />
+              <Indicateur libelle="Ratio de Sharpe" valeur={perf?.sharpe != null ? nombre(perf.sharpe, 2) : "–"}
+                explication="Rendement annualisé divisé par la volatilité (taux sans risque posé à 0). Au-dessus de 1, le risque pris a été bien payé." />
+              <Indicateur libelle="Ratio de Sortino" valeur={perf?.sortino != null ? nombre(perf.sortino, 2) : "–"}
+                explication="Comme le Sharpe, mais seules les baisses comptent comme du risque : les hausses ne sont pas punies." />
+              <Indicateur libelle="Perte maximale subie" valeur={perf ? perte(perf.drawdown_max) : "–"} ton={perf && perf.drawdown_max > 1e-9 ? "perte" : undefined}
+                explication="La pire chute de votre portefeuille depuis un de ses sommets (« drawdown maximal »)." />
+              <Indicateur libelle="Perte depuis le dernier sommet" valeur={perf ? perte(perf.drawdown_courant) : "–"} ton={perf && perf.drawdown_courant > 1e-9 ? "perte" : undefined}
+                explication="Où vous en êtes aujourd'hui par rapport à votre plus haut. Zéro signifie que vous êtes à un sommet." />
+              <Indicateur libelle="Rendement annualisé" valeur={perf?.rendement_annuel != null ? pctSigne(perf.rendement_annuel) : "–"} ton={perf?.rendement_annuel != null ? ton(perf.rendement_annuel) : undefined}
+                explication="Ce que rapporterait votre rythme actuel sur une année complète. Peu fiable sur une courte période." />
+            </div>
+            {analyse && risque === null && (pf?.positions.length ?? 0) > 0 && (
+              <p className="notes" role="status">
+                VaR et CVaR pas encore calculables : {analyse.jours_risque_disponibles} jours communs disponibles, {analyse.jours_risque_minimum} nécessaires.
+              </p>
+            )}
+            {analyse && analyse.avertissements.length > 0 && (
+              <ul className="notes" aria-label="À savoir">
+                {analyse.avertissements.map((avertissement) => <li key={avertissement}>{avertissement}</li>)}
+              </ul>
+            )}
+          </section>
+        </div>
+        <FichesRisque analyse={analyse} />
+        <div className="grille-2">
+          <CartePositions pf={pf} actifs={actifs} />
+          <CascadeResultat pf={pf} />
+        </div>
+        <div className="grille-2">
+          <Repartition analyse={analyse} />
+          <section className="panneau">
+            <header className="panneau-tete"><h2>Performance par position</h2></header>
+            <PerformancesPositions lignes={analyse?.repartition_detail.position ?? []} />
+          </section>
+        </div>
+        <div className="grille-2">
+          <RisqueSecteurs analyse={analyse} pf={pf} />
+          <PanneauDiversification analyse={analyse} />
+        </div>
+        <div className="grille-2">
+          <section className="panneau">
+            <header className="panneau-tete"><h2>Corrélations entre vos actifs</h2></header>
+            {analyse?.correlations
+              ? <Correlations symboles={analyse.correlations.symboles} matrice={analyse.correlations.matrice} />
+              : <p className="vide">Détenez au moins deux actifs et laissez passer quelques semaines de simulation pour voir comment ils bougent ensemble.</p>}
+            <p className="aide">Deux actifs très corrélés (bleu foncé) montent et baissent ensemble : les détenir tous les deux diversifie peu.</p>
+          </section>
+          <section className="panneau">
+            <header className="panneau-tete"><h2>Baisse depuis le dernier sommet</h2></header>
+            {hist ? <SousLEau points={points} /> : <p className="chargement">Chargement…</p>}
+          </section>
+        </div>
+      </BlocRepliable>
     </main>
   );
 }

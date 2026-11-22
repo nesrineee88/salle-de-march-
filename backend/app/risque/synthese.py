@@ -1,32 +1,54 @@
-"""Synthèse du tableau de bord : niveau de risque global et alertes des règles stop-loss / take-profit. Fonctions pures.
+"""Synthèse du tableau de bord : niveau de risque et alertes des règles stop-loss / take-profit. Fonctions pures.
 
-Niveau de risque global (pédagogique, seuils NON réglementaires) : chaque critère reçoit un rang 0 (faible), 1 (modéré)
-ou 2 (élevé) et le niveau global est le rang le plus élevé. On retient le pire critère plutôt qu'une moyenne : un
-portefeuille à 90 % dans un seul secteur reste dangereux même si sa VaR passée est faible.
-Les parts sont mesurées sur la valeur TOTALE du portefeuille (liquidités comprises) : une petite ligne dans un
-portefeuille surtout en liquidités n'est pas un risque de concentration.
+Niveau de risque (méthode validée le 22/11/2026 ; seuils pédagogiques, NON réglementaires) :
+ 1. cinq familles, mesurées avec les poids actuels sur les 250 dernières séances communes ;
+ 2. chacune reçoit une note de 0 à 100 : 100/3 au seuil « modéré », 200/3 au seuil « élevé », linéaire entre les deux ;
+ 3. score = moyenne pondérée des notes. CVaR et concentration pèsent le plus ; VaR et volatilité répètent en partie la CVaR ;
+ 4. plancher de sécurité, car une moyenne peut masquer un danger : une note au-dessus de 200/3 donne au moins « modéré »,
+    une note de 250/3 ou plus donne « élevé ». Sans lui, 100 % sur une seule action calme serait « modéré ».
+Sous 30 séances communes le niveau est « incomplet » : rien n'est inventé, seule la concentration est donnée.
+Le profil déclaré ne change pas le risque du portefeuille : c'est une alerte à part (`profil`).
+Les parts sont mesurées sur la valeur TOTALE (liquidités comprises) : une petite ligne dans un portefeuille surtout en
+liquidités n'est pas un risque de concentration.
 """
 from __future__ import annotations
 
 from .analyse import LIQUIDITES
 
-# Seuils (fractions). Bornes incluses dans le niveau inférieur : une VaR de 1 % pile reste « faible ».
-SEUILS = {
-    "var": (0.01, 0.025),                    # VaR historique 95 % à 1 jour, en fraction de la valeur totale
-    "concentration_position": (0.25, 0.50),  # part de la plus grosse position dans la valeur totale
-    "concentration_secteur": (0.40, 0.60),   # part du plus gros secteur (mêmes seuils que les alertes de la page Portefeuille)
-    "baisse": (0.10, 0.20),                  # baisse actuelle depuis le plus haut de la courbe de valeur
-}
+# cle, poids, seuil « modéré », seuil « élevé » (fractions)
+FAMILLES = (
+    ("volatilite", 0.15, 0.15, 0.30),       # écart-type annualisé
+    ("var", 0.15, 0.01, 0.025),             # VaR historique 95 % à 1 jour
+    ("cvar", 0.25, 0.015, 0.035),           # perte moyenne des jours pires que la VaR
+    ("drawdown", 0.20, 0.10, 0.20),         # pire baisse des poids actuels sur la fenêtre
+    ("concentration", 0.25, 0.25, 0.50),    # plus grosse position ; le secteur a ses propres seuils
+)
+SEUILS_SECTEUR = (0.40, 0.60)               # mêmes seuils que les alertes de la page Portefeuille
+NOTE_MODEREE, NOTE_ELEVEE, NOTE_CRITIQUE = 100 / 3, 200 / 3, 250 / 3
+EPS = 1e-9
 NIVEAUX = ("faible", "modere", "eleve")
 PROXIMITE_ALERTE = 0.05                      # une règle est « proche » si le prix est à 5 % ou moins de son seuil
 TYPES_SURVEILLES = ("stop_loss", "take_profit", "stop_suiveur")
-RANG_PROFIL = {"ok": 0, "proche": 1, "depasse": 2}
 
 
-def _rang(valeur: float, seuils: tuple[float, float]) -> int:
-    """0 si valeur ≤ seuil bas, 1 si ≤ seuil haut, 2 au-delà."""
-    bas, haut = seuils
-    return 0 if valeur <= bas else 1 if valeur <= haut else 2
+def noter(valeur: float, bas: float, haut: float) -> float:
+    """Note de 0 à 100, linéaire par morceaux ; 100 est atteint à deux fois le seuil élevé."""
+    if valeur <= bas:
+        x = valeur / bas / 3
+    elif valeur <= haut:
+        x = 1 / 3 + (valeur - bas) / (haut - bas) / 3
+    else:
+        x = 2 / 3 + (valeur - haut) / haut / 3
+    return 100 * min(1.0, max(0.0, x))
+
+
+def rang_note(note: float) -> int:
+    """0 faible, 1 modéré, 2 élevé. Une note pile au seuil reste dans le niveau inférieur."""
+    return 2 if note > NOTE_ELEVEE + EPS else 1 if note > NOTE_MODEREE + EPS else 0
+
+
+def rang_plancher(note: float) -> int:
+    return 2 if note >= NOTE_CRITIQUE - EPS else 1 if note > NOTE_ELEVEE + EPS else 0
 
 
 def _plus_grosse_part(lignes: list[dict]) -> dict | None:
@@ -35,36 +57,53 @@ def _plus_grosse_part(lignes: list[dict]) -> dict | None:
 
 
 def niveau_risque(analyse: dict) -> dict:
-    """Niveau global (« aucun » sans position) et critères triés du plus inquiétant au moins inquiétant.
-
-    `analyse` : sortie de risque.analyse.analyser. Un critère incalculable (VaR sans historique suffisant,
-    profil non renseigné) est omis : il n'est jamais remplacé par une valeur inventée."""
+    """`analyse` : sortie de risque.analyse.analyser. Niveau : aucun, incomplet, faible, modere ou eleve."""
     positions = [l for l in analyse["repartition"]["position"] if l["libelle"] != LIQUIDITES]
     part_investie = sum(l["part"] for l in positions)
-    if part_investie <= 0:
-        return {"niveau": "aucun", "criteres": [], "part_investie": 0.0}
-
-    criteres: list[dict] = []
-    if analyse.get("risque"):
-        v = analyse["risque"]["var"]
-        criteres.append({"critere": "var", "rang": _rang(v, SEUILS["var"]), "valeur": v})
-    position = _plus_grosse_part(analyse["repartition"]["position"])
-    if position:
-        criteres.append({"critere": "concentration_position", "rang": _rang(position["part"], SEUILS["concentration_position"]),
-                         "valeur": position["part"], "libelle": position["libelle"]})
-    secteur = _plus_grosse_part(analyse["repartition"]["secteur"])
-    if secteur:
-        criteres.append({"critere": "concentration_secteur", "rang": _rang(secteur["part"], SEUILS["concentration_secteur"]),
-                         "valeur": secteur["part"], "libelle": secteur["libelle"]})
     profil = analyse.get("profil") or {}
-    if profil.get("statut") in RANG_PROFIL:
-        criteres.append({"critere": "profil", "rang": RANG_PROFIL[profil["statut"]], "valeur": profil.get("perte_actuelle"),
-                         "tolerance": profil.get("perte_tolerance")})
-    baisse = analyse["performance"]["drawdown_courant"] or 0.0
-    criteres.append({"critere": "baisse", "rang": _rang(baisse, SEUILS["baisse"]), "valeur": baisse})
+    sortie = {
+        "niveau": "aucun", "score": None, "niveau_pondere": None, "plancher": None, "familles": [],
+        "calcul_complet": True, "part_investie": 0.0, "jours": 0,
+        "profil": {"statut": profil.get("statut", "profil_absent"), "perte_actuelle": profil.get("perte_actuelle"),
+                   "tolerance": profil.get("perte_tolerance")},
+    }
+    if part_investie <= 0:
+        return sortie
 
-    criteres.sort(key=lambda c: -c["rang"])          # tri stable : l'ordre ci-dessus départage les ex aequo
-    return {"niveau": NIVEAUX[criteres[0]["rang"]], "criteres": criteres, "part_investie": part_investie}
+    r = analyse.get("risque") or {}
+    valeurs = {"volatilite": r.get("volatilite_annuelle_seances"), "var": r.get("var"), "cvar": r.get("cvar"),
+               "drawdown": r.get("drawdown_poids")}
+    position = _plus_grosse_part(analyse["repartition"]["position"])
+    secteur = _plus_grosse_part(analyse["repartition"]["secteur"])
+    familles = []
+    for cle, poids, bas, haut in FAMILLES:
+        ligne = {"cle": cle, "poids": poids, "seuil_modere": bas, "seuil_eleve": haut}
+        if cle == "concentration":
+            candidats = [(noter(p["part"], *seuils), nature, p, seuils)
+                         for nature, p, seuils in (("position", position, (bas, haut)), ("secteur", secteur, SEUILS_SECTEUR)) if p]
+            note, nature, part, seuils = max(candidats, key=lambda c: c[0])
+            ligne.update(valeur=part["part"], libelle=part["libelle"], nature=nature, seuil_modere=seuils[0], seuil_eleve=seuils[1])
+        else:
+            valeur = valeurs[cle]
+            ligne["valeur"] = valeur
+            note = noter(valeur, bas, haut) if valeur is not None else None
+        ligne.update(note=note, rang=rang_note(note) if note is not None else None,
+                     points=note * poids if note is not None else None)
+        familles.append(ligne)
+
+    pire = max((f for f in familles if f["note"] is not None), key=lambda f: f["note"])
+    plancher = rang_plancher(pire["note"])
+    complet = all(f["note"] is not None for f in familles)
+    sortie.update(familles=familles, part_investie=part_investie, calcul_complet=complet, jours=r.get("jours", 0),
+                  plancher={"niveau": NIVEAUX[plancher], "cle": pire["cle"], "note": pire["note"], "releve": False})
+    if not complet:
+        sortie["niveau"] = "incomplet"
+        return sortie
+    score = sum(f["points"] for f in familles)
+    moyenne = rang_note(score)
+    sortie["plancher"]["releve"] = plancher > moyenne
+    sortie.update(score=score, niveau_pondere=NIVEAUX[moyenne], niveau=NIVEAUX[max(moyenne, plancher)])
+    return sortie
 
 
 def alertes_regles(regles: list[dict], prix: dict[str, float], proximite: float = PROXIMITE_ALERTE) -> dict:

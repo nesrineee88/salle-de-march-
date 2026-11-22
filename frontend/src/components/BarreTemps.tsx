@@ -1,122 +1,87 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Gauge, Pause, Play } from "lucide-react";
-import { ErreurApi, api } from "@/lib/api";
-import { dateLongue, heure, instantDate } from "@/lib/format";
-import type { EtatDirect, Instantane } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
+import { Pause, Play } from "lucide-react";
+import { dateCourte, heure, instantDate } from "@/lib/format";
+import { useLecture } from "@/lib/hooks";
+import { HEURE_ARRIVEE, jourPlus } from "@/lib/temps";
+import type { Barre } from "@/lib/types";
 import { useMarche } from "./Contexte";
-import Frise from "./Frise";
+import { BoutonXAI } from "./xai/Assistant";
 
-/** Horloge affichée en continu : entre deux réponses du serveur, on avance localement au même rythme. */
-function useInstantLisse(inst: Instantane | null): string | null {
-  const [affiche, setAffiche] = useState<string | null>(null);
-  const instant = inst?.instant;
-  const facteur = inst?.horloge.facteur;
-  const enPause = inst?.horloge.en_pause;
+const JOUR_SEMAINE = new Intl.DateTimeFormat("fr-FR", { weekday: "short", timeZone: "UTC" });
 
-  useEffect(() => {
-    if (!instant || facteur === undefined) return;
-    const base = instantDate(instant).getTime();
-    const depart = performance.now();
-    const maj = () => setAffiche(new Date(base + (enPause ? 0 : (performance.now() - depart) * facteur)).toISOString());
-    maj();
-    if (enPause) return;
-    const t = setInterval(maj, 200);
-    return () => clearInterval(t);
-  }, [instant, facteur, enPause]);
+/** La pellicule en pied d'écran : le passé est projeté, l'avenir reste hachuré. */
+export default function BarreTemps({ instant, signaler }: { instant: string | null; signaler: (message: string) => void }) {
+  const { inst, aller, basculerPause, changerFacteur } = useMarche();
+  const [occupe, setOccupe] = useState(false);
+  // Passé du S&P 500 : le serveur ne renvoie jamais au-delà de l'instant simulé.
+  const { donnees: passe, relire } = useLecture<Barre[]>(inst ? `/api/v1/historique/${encodeURIComponent("^GSPC")}?barres=2000` : null, 30_000);
 
-  return inst ? affiche ?? inst.instant : null;
-}
+  const debut = inst?.fenetre.debut;
+  const fin = inst?.fenetre.fin;
+  const jour = instant?.slice(0, 10);
+  const jourServeur = inst?.instant.slice(0, 10);
+  useEffect(() => { if (jourServeur) void relire(); }, [jourServeur, relire]);
 
-export default function BarreTemps() {
-  const { mode, setMode, inst, aller, basculerPause, changerFacteur, activerDirect, quitterDirect } = useMarche();
-  const lisse = useInstantLisse(inst);
-  const [fiche, setFiche] = useState<EtatDirect | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [enCours, setEnCours] = useState(false);
-  const enDirect = inst?.direct ?? false;
+  const trace = useMemo(() => {
+    if (!passe || !debut || !fin || !jour) return "";
+    const pts = passe.filter((b) => b.date >= debut && b.date <= fin && b.date <= jour);
+    if (pts.length < 2) return "";
+    const valeurs = pts.map((b) => b.close);
+    const bas = Math.min(...valeurs), haut = Math.max(...valeurs);
+    const t0 = Date.parse(debut), etendue = Date.parse(fin) - t0;
+    const pas = Math.ceil(pts.length / 500);
+    return pts.filter((_, i) => i % pas === 0 || i === pts.length - 1).map((b, i) =>
+      `${i ? "L" : "M"}${(((Date.parse(b.date) - t0) / etendue) * 1000).toFixed(1)},${(25 - ((b.close - bas) / (haut - bas || 1)) * 20).toFixed(1)}`).join("");
+  }, [passe, debut, fin, jour]);
 
-  async function ouvrirDirect() {
-    setMessage(null);
-    try { setFiche(await api<EtatDirect>("/api/v1/direct/etat")); }
-    catch (e) { setMessage(e instanceof Error ? e.message : "Lecture impossible."); }
+  if (!inst || !instant || !debut || !fin) return <footer className="seance-film"><p>Connexion au marché…</p><BoutonXAI /></footer>;
+
+  const { direct, termine, horloge } = inst;
+  const enPause = horloge.en_pause || termine;
+  const predefinis = horloge.facteurs_predefinis;
+  const nomFacteur = Object.entries(predefinis).find(([, f]) => f === horloge.facteur)?.[0];
+  const t0 = Date.parse(`${debut}T00:00:00Z`);
+  const t1 = Date.parse(`${fin}T23:59:59Z`);
+  const ecoule = direct ? 1 : Math.min(1, Math.max(0, (instantDate(instant).getTime() - t0) / (t1 - t0)));
+
+  async function agir(action: () => Promise<void>) {
+    setOccupe(true);
+    try { await action(); }
+    catch (e) { signaler(e instanceof Error ? e.message : "Le temps n’a pas pu changer."); }
+    finally { setOccupe(false); }
   }
-  async function confirmer() {
-    setEnCours(true); setMessage(null);
-    try { await activerDirect(); setFiche(null); }
-    catch (e) { setMessage(e instanceof ErreurApi ? e.message : "Activation impossible."); }
-    finally { setEnCours(false); }
+  function avancerDe(n: number) {
+    const cible = jourPlus(instant!, n);
+    void agir(() => aller(cible >= fin! ? `${fin}T23:59:59` : `${cible}T${HEURE_ARRIVEE}`));
   }
-  const h = inst?.horloge;
-  const nomFacteur = h ? Object.entries(h.facteurs_predefinis).find(([, f]) => f === h.facteur)?.[0] : undefined;
+  const fige = direct || termine || occupe;
 
   return (
-    <div className="temps">
-      <div className="horloge" aria-label="Date et heure simulées">
-        {inst && lisse ? (
-          <>
-            <p className="horloge-heure">{heure(lisse)}</p>
-            <p className="horloge-date">{dateLongue(lisse)}</p>
-          </>
-        ) : <p className="horloge-date">Connexion au marché…</p>}
+    <footer className="seance-film" aria-label="Temps simulé">
+      <button type="button" className="seance-lecture" disabled={fige} onClick={() => void agir(basculerPause)}
+        aria-label={direct ? "Le Direct suit l’heure réelle" : termine ? "Simulation terminée" : enPause ? "Lancer le temps" : "Mettre le temps en pause"}>
+        {enPause || direct ? <Play size={17} fill="currentColor" aria-hidden="true" /> : <Pause size={17} fill="currentColor" aria-hidden="true" />}
+      </button>
+      <div className="seance-film-date">
+        <strong>{JOUR_SEMAINE.format(instantDate(instant))} {dateCourte(instant)}</strong>
+        <small>{direct ? "Direct, lecture seule" : termine ? "Séance terminée" : `${heure(instant)} UTC, ${enPause ? "en pause" : "le temps avance"}`}</small>
       </div>
-
-      <div className="commandes-temps">
-        {!enDirect && (
-          <>
-            <button type="button" className="btn-lecture" onClick={basculerPause} disabled={!h || inst?.termine}
-              aria-label={inst?.termine ? "Simulation terminée" : h?.en_pause ? "Lancer la simulation" : "Mettre la simulation en pause"}
-              title={inst?.termine ? "Simulation terminée" : h?.en_pause ? "Lancer" : "Pause"}>
-              {h?.en_pause || inst?.termine ? <Play size={18} aria-hidden="true" fill="currentColor" /> : <Pause size={18} aria-hidden="true" fill="currentColor" />}
-            </button>
-            <label className="vitesse" title="Vitesse de la simulation">
-              <Gauge size={16} aria-hidden="true" />
-              <span className="sr-only">Vitesse</span>
-              <select value={nomFacteur ?? ""} onChange={(e) => h && void changerFacteur(h.facteurs_predefinis[e.target.value])} disabled={!h}>
-                {!nomFacteur && h && <option value="">×{h.facteur}</option>}
-                {h && Object.keys(h.facteurs_predefinis).map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
-            </label>
-          </>
-        )}
-        <div className="segment" role="group" aria-label="Mode de jeu">
-          <button type="button" aria-pressed={mode === "apprenant"} onClick={() => setMode("apprenant")} title="Explications et repères pédagogiques">Apprenant</button>
-          <button type="button" aria-pressed={mode === "trader"} onClick={() => setMode("trader")} title="Vue dense, sans aides">Trader</button>
-        </div>
-        <div className="segment" role="group" aria-label="Source des prix">
-          <button type="button" aria-pressed={!enDirect} onClick={() => enDirect && void quitterDirect()} disabled={!h}>Rejeu historique</button>
-          <button type="button" aria-pressed={enDirect} onClick={() => !enDirect && void ouvrirDirect()} aria-haspopup={enDirect ? undefined : "dialog"} disabled={!h}>
-            {enDirect && <span className="point-direct" aria-hidden="true" />}Direct <small>bêta</small>
-          </button>
-        </div>
-        {enDirect && <p className="direct-badge" role="status">Heure réelle · prix Yahoo Finance</p>}
+      <div className="seance-bobine" role="img" aria-label={`Période rejouée : ${Math.round(ecoule * 100)} % écoulés. La suite est masquée.`}>
+        <svg viewBox="0 0 1000 30" preserveAspectRatio="none" aria-hidden="true"><path d={trace} vectorEffect="non-scaling-stroke" /></svg>
+        {ecoule < 1 && <div className="seance-futur" style={{ width: `${(1 - ecoule) * 100}%` }}>{ecoule < 0.88 && <span>Avenir masqué</span>}</div>}
       </div>
-
-      {fiche && (
-        <div className="direct-fiche" role="dialog" aria-labelledby="titre-direct">
-          <h2 id="titre-direct">Passer en mode Direct (bêta)</h2>
-          {fiche.disponible ? (
-            <>
-              <p>Votre horloge suivra l&apos;heure réelle et les prix viendront de Yahoo Finance. Vous pourrez quitter à tout moment.</p>
-              <ul>{fiche.avertissements.map((a) => <li key={a}>{a}</li>)}</ul>
-              <div className="direct-actions">
-                <button className="btn btn-principal" onClick={() => void confirmer()} disabled={enCours}>{enCours ? "Connexion à Yahoo…" : "Passer en Direct"}</button>
-                <button className="btn" onClick={() => setFiche(null)}>Annuler</button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p>Le mode Direct est désactivé sur ce serveur.</p>
-              <button className="btn" onClick={() => setFiche(null)}>Fermer</button>
-            </>
-          )}
-          {message && <p className="erreur" role="alert">{message}</p>}
-        </div>
-      )}
-      {!fiche && message && <p className="erreur direct-erreur" role="alert">{message}</p>}
-
-      {inst && lisse && !enDirect ? <Frise fenetre={inst.fenetre} instant={lisse} onAller={(iso) => void aller(iso)} /> : <div />}
-    </div>
+      <button type="button" className="seance-pas" disabled={fige} onClick={() => avancerDe(1)}>+1 j</button>
+      <button type="button" className="seance-pas seance-option" disabled={fige} onClick={() => avancerDe(5)}>+5 j</button>
+      <label className="seance-vitesse seance-option">
+        <span className="sr-only">Vitesse de la simulation</span>
+        <select value={nomFacteur ?? ""} disabled={fige} onChange={(e) => void agir(() => changerFacteur(predefinis[e.target.value]))}>
+          {!nomFacteur && <option value="">×{horloge.facteur}</option>}
+          {Object.keys(predefinis).map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+      </label>
+      <BoutonXAI />
+    </footer>
   );
 }

@@ -20,12 +20,12 @@ def test_univers_reel_est_valide():
     u = charger_univers(config.UNIVERS_YAML)
     classes = [a.classe for a in u]
     assert classes.count("action") == 22 and classes.count("crypto") == 8
-    assert classes.count("matiere") == 11 and classes.count("indice") == 2
+    assert classes.count("matiere") == 11 and classes.count("indice") == 6
     assert len({a.fichier for a in u}) == len(u.actifs)             # pas de collision de noms de fichiers
     assert u["CL=F"].negatif_ok and not u["BZ=F"].negatif_ok
     assert u["CL=F"].fichier == "CL_F.csv" and u["^GSPC"].fichier == "idx_GSPC.csv"
     assert not u["^VIX"].tradable and u["AAPL"].session_utc is not None and u["BTC-USD"].session_utc is None
-    assert u.debut.year == 2018 and u.fin.year == 2026
+    assert u.debut.year == 2019 and u.fin.year == 2026
 
 
 def test_chaine_complete(tmp_path):

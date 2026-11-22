@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from .analyse.indicateurs import atr
-from .contexte import Contexte, acces_bac, donnees_ou_erreur, obtenir_contexte
+from .contexte import Contexte, acces_bac, donnees_ou_erreur, instant_compte, obtenir_contexte, refuser_en_direct
 from .marche.stockage import DonneeIndisponible
 from .risque.avant_ordre import verifier_achat
 from .trading.carnet import FRAIS_BPS
@@ -40,6 +40,7 @@ def _niveau(regle: dict, pos: dict | None) -> float | None:
 def lister_regles(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     """Toutes les règles de l'utilisateur, les plus récentes d'abord, avec le prix de déclenchement des règles actives."""
     with acces_bac(ctx, u) as (bac, t):
+        t = instant_compte(bac, t)
         compte = bac.salle.compte(bac.compte_id)
         positions = {p["symbole"]: p for p in bac.salle.valorisation(bac.compte_id, t)["positions"]}
         sortie = []
@@ -57,6 +58,7 @@ def poser_regle(corps: CorpsRegle, ctx: Contexte = Depends(obtenir_contexte),
     """Pose une règle sur une position, ou remplace la règle active du même type sur cet actif."""
     seuil = corps.seuil_pct / 100.0
     with acces_bac(ctx, u) as (bac, t):
+        refuser_en_direct(bac, "poser une règle")
         try:
             regle = bac.salle.poser_regle(bac.compte_id, corps.symbole, corps.type,
                                           -seuil if corps.type == STOP_LOSS else seuil, corps.part_pct / 100.0, t)
@@ -69,6 +71,7 @@ def poser_regle(corps: CorpsRegle, ctx: Contexte = Depends(obtenir_contexte),
 def supprimer_regle(regle_id: int, ctx: Contexte = Depends(obtenir_contexte),
                     u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     with acces_bac(ctx, u) as (bac, _t):
+        refuser_en_direct(bac, "supprimer une règle")
         try:
             return regle_en_dict(bac.salle.annuler_regle(bac.compte_id, regle_id))
         except KeyError as exc:

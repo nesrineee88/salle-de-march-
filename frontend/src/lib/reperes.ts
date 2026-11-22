@@ -1,4 +1,4 @@
-/** Repères historiques sur la frise. Dates à confirmer sur les données une fois l'instantané téléchargé. */
+/** Repères historiques, proposés en raccourcis dans le choix de la date. Dates à confirmer sur les données une fois l'instantané téléchargé. */
 export interface Repere {
   date: string;
   titre: string;
@@ -6,7 +6,6 @@ export interface Repere {
 }
 
 export const REPERES: Repere[] = [
-  { date: "2018-12-24", titre: "Creux boursier de fin 2018", explication: "Les actions américaines touchent leur point bas de l'année." },
   { date: "2020-03-09", titre: "Krach du COVID-19", explication: "Chute brutale des marchés actions et du pétrole au début de la pandémie." },
   { date: "2020-04-20", titre: "Le WTI passe sous zéro", explication: "Le contrat de pétrole WTI clôture à un prix négatif." },
   { date: "2022-05-09", titre: "Krach des cryptomonnaies", explication: "L'effondrement de Terra et Luna entraîne une chute du marché crypto." },

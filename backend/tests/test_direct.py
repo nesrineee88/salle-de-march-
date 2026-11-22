@@ -129,14 +129,13 @@ def test_activation_horloge_et_trading_en_direct(client, utilisateur, flux, ctx_
         assert r.status_code == 409 and "Direct" in r.json()["detail"], chemin
 
     o = client.post("/api/v1/ordres", json={"symbole": "TST", "sens": "achat", "quantite": 10, "type": "marche"}, headers=bob.h)
-    assert o.status_code == 201 and o.json()["statut"] == "execute"
-    pos = client.get("/api/v1/portefeuille", headers=bob.h).json()["positions"][0]
-    assert pos["prix_marche"] == pytest.approx(123.45, rel=1e-3) and pos["prix_moyen"] == pytest.approx(123.45, rel=0.01)   # écart acheteur-vendeur de quelques points de base
+    assert o.status_code == 409 and "lecture seule" in o.json()["detail"]                # aucun ordre en Direct
+    assert client.get("/api/v1/portefeuille", headers=bob.h).json()["positions"] == []
 
     q = client.post("/api/v1/direct/quitter", headers=bob.h)
     assert q.status_code == 200 and q.json()["actif"] is False
     inst = client.get("/api/v1/marche/instantane", headers=bob.h).json()
-    assert inst["direct"] is False and inst["horloge"]["en_pause"] is True and inst["instant"].startswith("2020-12-31")
+    assert inst["direct"] is False and inst["horloge"]["en_pause"] is True and inst["instant"].startswith("2020-01-01")   # la date du rejeu
     assert client.post("/api/v1/horloge/aller-a", json={"instant": "2020-02-10T10:00:00"}, headers=bob.h).status_code == 200
 
 

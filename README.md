@@ -1,5 +1,9 @@
 # Simulateur de salle de marché
 
+> **Séance**, version du 22 novembre 2026. L'état réel, les décisions et le travail en parallèle sont dans [CLAUDE.md](CLAUDE.md).
+> Le prototype visuel (chiffres fictifs) est dans [docs/design/seance-prototype.html](docs/design/seance-prototype.html).
+> Le tableau d'état ci-dessous date d'avant la refonte.
+
 Projet Informatique Finance, ESPRIT, 2026-2027. Nouvelle base de code (interface refaite de zéro).
 
 ## État

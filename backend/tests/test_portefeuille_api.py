@@ -25,6 +25,24 @@ def test_analyse_sans_position(client, utilisateur):
     assert any("Aucune position" in m for m in a["avertissements"])
     assert a["repartition"]["marche"] == [{"libelle": "Liquidités", "part": pytest.approx(1.0)}]
     assert a["profil"] == {"statut": "profil_absent"}
+    assert a["jours_risque_disponibles"] == 0 and a["jours_risque_minimum"] == 30
+
+
+def test_portefeuille_signale_une_position_achetee_apres_la_date_simulee(client, utilisateur, ctx_test):
+    u = utilisateur()
+    aller(client, u, "2020-02-03T17:00:00")
+    assert acheter(client, u, 3)["statut"] == "execute"
+    position = client.get("/api/v1/portefeuille", headers=u.h).json()["positions"][0]
+    assert position["achetee_apres_t"] is False
+    assert position["achetee_apres_t_le"] is None
+
+    aller(client, u, "2020-02-10T17:00:00")
+    assert acheter(client, u, 2)["statut"] == "execute"
+    ctx_test.bac(u.id).horloge.aller_a(datetime(2020, 2, 5, 17))       # compte enregistré quand on pouvait reculer
+
+    position = client.get("/api/v1/portefeuille", headers=u.h).json()["positions"][0]
+    assert position["achetee_apres_t"] is True
+    assert position["achetee_apres_t_le"].startswith("2020-02-10T")
 
 
 def test_analyse_avec_position_repartition_et_profil(client, utilisateur):
@@ -44,6 +62,7 @@ def test_analyse_avec_position_repartition_et_profil(client, utilisateur):
     assert a["concentration_detail"]["plus_grosse_position"]["part"] == pytest.approx(1.0)
     assert a["pistes_diversification"]
     assert a["risque"]["jours"] >= 30 and a["risque"]["cvar"] >= a["risque"]["var"] >= 0
+    assert a["jours_risque_disponibles"] == a["risque"]["jours"] and a["jours_risque_minimum"] == 30
     assert a["risque"]["var_montant"] == pytest.approx(a["risque"]["var"] * client.get("/api/v1/portefeuille", headers=u.h).json()["equity"])
     assert a["profil"]["statut"] in ("ok", "proche", "depasse") and a["profil"]["perte_tolerance"] == pytest.approx(0.10)
     assert a["correlations"] is None                                                         # une seule position
@@ -71,30 +90,33 @@ def test_courbe_de_valeur_un_point_par_jour_simule_et_persistee(client, utilisat
         aller(client, u, f"{jour}T17:00:00")
     h = client.get("/api/v1/portefeuille/historique", headers=u.h).json()
     jours = [p["jour"] for p in h["points"]]
-    assert jours == sorted(set(jours)) and jours[0] == "2020-01-01" and jours[-1] == "2020-02-06"   # 1er point : le départ
+    assert jours == sorted(set(jours)) and jours[0] == "2020-02-03" and jours[-1] == "2020-02-06"   # 1er point : la première transaction
     assert {"2020-02-03", "2020-02-04", "2020-02-05"} <= set(jours)
     assert h["points"][0]["equity"] == pytest.approx(100_000)
     apres_achat = next(p for p in h["points"] if p["jour"] == "2020-02-03")
     assert apres_achat["equity"] == pytest.approx(100_000, abs=50)                          # juste après l'achat : frais et spread seulement
-    assert h["benchmark"] == "^GSPC" and h["points"][0]["benchmark"] is None               # pas de S&P 500 dans les données de test
+    assert h["benchmark"] is None and h["points"][0]["benchmark"] is None                  # pas de S&P 500 dans les données de test
     with base_test.session() as s:
-        assert [p["jour"] for p in persistance.lire_historique(s, u.id)] == jours
+        assert set(jours) <= {p["jour"] for p in persistance.lire_historique(s, u.id)}
 
 
-def test_la_courbe_survit_a_un_redemarrage_et_masque_le_futur_apres_un_retour_arriere(client, utilisateur, base_test, univers_test, magasin_test):
+def test_la_courbe_survit_a_un_redemarrage_et_refuse_le_retour_arriere(client, utilisateur, base_test, univers_test, magasin_test):
     from fastapi.testclient import TestClient
 
     u = utilisateur()
-    for jour in ("2020-02-03", "2020-02-10", "2020-02-17"):
+    aller(client, u, "2020-02-03T17:00:00")
+    assert acheter(client, u, 5)["statut"] == "execute"
+    for jour in ("2020-02-10", "2020-02-17"):
         aller(client, u, f"{jour}T17:00:00")
     avant = client.get("/api/v1/portefeuille/historique", headers=u.h).json()["points"]
+    assert len(avant) == 15
     neuf = Contexte(univers_test, magasin_test, MoteurMarche(magasin_test, univers_test), base=base_test)
     app.dependency_overrides[obtenir_contexte] = lambda: neuf
     c2 = TestClient(app)
-    assert c2.get("/api/v1/portefeuille/historique", headers=u.h).json()["points"] == avant
-    aller(c2, u, "2020-02-11T17:00:00")                                                      # retour en arrière
-    visibles = [p["jour"] for p in c2.get("/api/v1/portefeuille/historique", headers=u.h).json()["points"]]
-    assert "2020-02-17" not in visibles and "2020-02-03" in visibles
+    apres = c2.get("/api/v1/portefeuille/historique", headers=u.h).json()["points"]
+    assert [p["jour"] for p in apres] == [p["jour"] for p in avant]
+    assert [p["equity"] for p in apres] == pytest.approx([p["equity"] for p in avant])
+    assert c2.post("/api/v1/horloge/aller-a", json={"instant": "2020-02-11T17:00:00"}, headers=u.h).status_code == 409
 
 
 def test_trades_clotures_avec_gain_realise(client, utilisateur):

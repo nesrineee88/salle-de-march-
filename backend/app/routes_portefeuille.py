@@ -1,13 +1,12 @@
 """Routes du portefeuille : analyse du risque, courbe de valeur, trades clôturés, export des données."""
 from __future__ import annotations
 
-from datetime import date, timedelta
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from .contexte import Contexte, acces_bac, obtenir_contexte
+from .contexte import Contexte, acces_bac, instant_compte, obtenir_contexte
 from .risque.analyse import analyser, simuler_choc_sectoriel
+from .risque.suivi import debut_suivi, mouvements, points_suivi, references_disponibles, resumer, serie_reference
 from .risque.synthese import alertes_regles, niveau_risque
 from .routes_regles import _niveau as niveau_regle
 from .trading.historique import historique_positions
@@ -17,7 +16,7 @@ from .utilisateurs.routes import exiger, publique, utilisateur_courant
 
 routeur = APIRouter(prefix="/api/v1")
 BENCHMARK = "^GSPC"
-FENETRE_RISQUE_JOURS = 260
+FENETRE_RISQUE_JOURS = 420      # assez de barres pour 250 séances communes, même avec une cryptomonnaie (7 j/7)
 
 
 class CorpsChocSectoriel(BaseModel):
@@ -25,29 +24,39 @@ class CorpsChocSectoriel(BaseModel):
     choc_pct: float = Field(ge=-100, le=300, allow_inf_nan=False)
 
 
-def _analyser_bac(ctx: Contexte, bac, t, u: Utilisateur) -> dict:
-    """Analyse du portefeuille à l'instant simulé t (à appeler sous le verrou du bac)."""
-    valo = bac.salle.valorisation(bac.compte_id, t)
+def _courbe(ctx: Contexte, bac, t, valo: dict) -> tuple:
+    debut = debut_suivi(bac.salle.compte(bac.compte_id).executions, t)
+    return debut, points_suivi(ctx.historique_visible(bac, t), valo, debut, t)
+
+
+def _analyser_bac(ctx: Contexte, bac, t, u: Utilisateur, valo: dict, points: list[dict]) -> dict:
+    """Analyse du portefeuille à l'instant t du compte (à appeler sous le verrou du bac)."""
     series = {p["symbole"]: ctx.magasin.barres_terminees(p["symbole"], t.date(), n=FENETRE_RISQUE_JOURS)["close"]
               for p in valo["positions"] if ctx.magasin.a_des_donnees(p["symbole"])}
     catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
     reference = (ctx.magasin.barres_terminees(BENCHMARK, t.date(), n=FENETRE_RISQUE_JOURS)["close"]
                  if ctx.magasin.a_des_donnees(BENCHMARK) else None)        # séances terminées : jamais le futur
-    return analyser(valo, ctx.historique_visible(bac, t), series, catalogue, u.profil_risque, benchmark=reference)
+    return analyser(valo, points, series, catalogue, u.profil_risque, benchmark=reference)
 
 
 @routeur.get("/portefeuille/analyse")
 def analyse(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     with acces_bac(ctx, u) as (bac, t):
-        return _analyser_bac(ctx, bac, t, u)
+        t = instant_compte(bac, t)
+        valo = bac.salle.valorisation(bac.compte_id, t)
+        return _analyser_bac(ctx, bac, t, u, valo, _courbe(ctx, bac, t, valo)[1])
 
 
 @routeur.get("/tableau-de-bord")
 def tableau_de_bord(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
     """Synthèse calculée côté serveur pour le tableau de bord : niveau de risque, alertes des règles, répartition."""
-    with acces_bac(ctx, u) as (bac, t):
-        a = _analyser_bac(ctx, bac, t, u)
+    with acces_bac(ctx, u) as (bac, t_marche):
+        t = instant_compte(bac, t_marche)              # en Direct : portefeuille figé, marché à l'heure réelle
         valo = bac.salle.valorisation(bac.compte_id, t)
+        debut, points = _courbe(ctx, bac, t, valo)
+        a = _analyser_bac(ctx, bac, t, u, valo, points)
+        suivi = resumer(ctx, points, valo, bac.salle.compte(bac.compte_id).executions, debut, t, t_marche)
+        bougent = mouvements(ctx, t_marche)
         positions = {p["symbole"]: p for p in valo["positions"]}
         regles = []
         for r in bac.salle.compte(bac.compte_id).regles.values():
@@ -56,7 +65,8 @@ def tableau_de_bord(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = 
             regles.append(d)
     prix = {s: p["prix_marche"] for s, p in positions.items()}
     return {"instant": a["instant"], "niveau_risque": niveau_risque(a), "alertes": alertes_regles(regles, prix),
-            "repartition_detail": a["repartition_detail"], "risque": a["risque"], "performance": a["performance"]}
+            "repartition_detail": a["repartition_detail"], "risque": a["risque"], "performance": a["performance"],
+            "suivi": suivi, "mouvements": bougent}
 
 
 @routeur.post("/portefeuille/simuler-choc")
@@ -67,28 +77,28 @@ def simuler_choc(corps: CorpsChocSectoriel, ctx: Contexte = Depends(obtenir_cont
         raise HTTPException(422, f"Secteur inconnu : {corps.secteur}.")
     catalogue = {a.symbole: (a.classe, a.secteur) for a in ctx.univers}
     with acces_bac(ctx, u) as (bac, t):
-        valo = bac.salle.valorisation(bac.compte_id, t)
+        valo = bac.salle.valorisation(bac.compte_id, instant_compte(bac, t))
         return simuler_choc_sectoriel(valo, catalogue, corps.secteur, corps.choc_pct)
 
 
 @routeur.get("/portefeuille/historique")
-def historique_valeur(ctx: Contexte = Depends(obtenir_contexte), u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
-    """Courbe de valeur du portefeuille, avec le S&P 500 ramené au même capital de départ pour comparer."""
+def historique_valeur(reference: str | None = Query(None, max_length=40), ctx: Contexte = Depends(obtenir_contexte),
+                      u: Utilisateur = Depends(exiger("trading.passer_ordre"))):
+    """Courbe de valeur depuis la première transaction, avec la référence ramenée au même capital ce jour-là."""
+    disponibles = references_disponibles(ctx.magasin)
+    ref = next((r for r in disponibles if r["symbole"] == reference), None) if reference else (disponibles[0] if disponibles else None)
+    if reference and ref is None:
+        raise HTTPException(422, f"Indice de référence inconnu : {reference}.")
     with acces_bac(ctx, u) as (bac, t):
-        points = ctx.historique_visible(bac, t)
-        capital = bac.salle.compte(bac.compte_id).capital_initial
-        base = None
-        sortie = []
-        for p in points:
-            jour = date.fromisoformat(p["jour"])
-            ref = None
-            if ctx.magasin.a_des_donnees(BENCHMARK):
-                ref = ctx.magasin.derniere_cloture_avant(BENCHMARK, jour + timedelta(days=1))   # clôture de ce jour ou la dernière connue
-            if base is None and ref:
-                base = ref
-            sortie.append({"jour": p["jour"], "equity": p["equity"], "cash": p["cash"],
-                           "benchmark": capital * ref / base if (ref and base) else None})
-        return {"points": sortie, "benchmark": BENCHMARK, "capital_initial": capital}
+        t = instant_compte(bac, t)
+        valo = bac.salle.valorisation(bac.compte_id, t)
+        debut, points = _courbe(ctx, bac, t, valo)
+        capital = valo["capital_initial"]
+        compare = serie_reference(ctx.magasin, ctx.moteur, ref["symbole"], points, capital) if ref else [None] * len(points)
+    par_jour = {p["jour"]: {"jour": p["jour"], "equity": p["equity"], "cash": p["cash"], "benchmark": b}
+                for p, b in zip(points, compare)}                 # première transaction aujourd'hui : un seul point
+    return {"points": list(par_jour.values()), "benchmark": ref["symbole"] if ref else None,
+            "benchmark_nom": ref["nom"] if ref else None, "debut": debut.isoformat(timespec="seconds"), "capital_initial": capital}
 
 
 @routeur.get("/portefeuille/trades")

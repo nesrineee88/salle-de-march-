@@ -106,16 +106,6 @@ export default function Ticket({ actif, cotation, pf, mode, onEnvoyer }: Props) 
 
       <form onSubmit={soumettre} noValidate>
         <div className="champ">
-          <label htmlFor="type-ordre">Type d&apos;ordre</label>
-          <select id="type-ordre" value={type} onChange={(e) => setType(e.target.value as typeof type)}>
-            <option value="marche">Au marché</option>
-            <option value="limite">Limite</option>
-            <option value="stop">Stop</option>
-          </select>
-          {mode === "apprenant" && <p className="aide">{AIDE_TYPE[type]}</p>}
-        </div>
-
-        <div className="champ">
           <label htmlFor="quantite">Quantité</label>
           <input id="quantite" inputMode="decimal" value={q} onChange={(e) => setQ(e.target.value)} />
           <div className="raccourcis" role="group" aria-label="Quantité en pourcentage du maximum">
@@ -128,21 +118,33 @@ export default function Ticket({ actif, cotation, pf, mode, onEnvoyer }: Props) 
           </p>
         </div>
 
-        {type === "limite" && (
+        <details className="ticket-options">
+          <summary>Type d&apos;ordre : {type === "marche" ? "Au marché" : type === "limite" ? "Limite" : "Stop"}</summary>
           <div className="champ">
-            <label htmlFor="prix-limite">Prix limite</label>
-            <input id="prix-limite" inputMode="decimal" value={pLimite} onChange={(e) => setPLimite(e.target.value)} placeholder={prixCourant !== null ? prix(prixCourant) : ""} />
+            <label htmlFor="type-ordre">Type d&apos;ordre</label>
+            <select id="type-ordre" value={type} onChange={(e) => setType(e.target.value as typeof type)}>
+              <option value="marche">Au marché</option>
+              <option value="limite">Limite</option>
+              <option value="stop">Stop</option>
+            </select>
+            {mode === "apprenant" && <p className="aide">{AIDE_TYPE[type]}</p>}
           </div>
-        )}
-        {type === "stop" && (
-          <div className="champ">
-            <label htmlFor="prix-stop">Prix du stop</label>
-            <input id="prix-stop" inputMode="decimal" value={pStop} onChange={(e) => setPStop(e.target.value)} placeholder={prixCourant !== null ? prix(prixCourant) : ""} />
-            {mode === "apprenant" && (
-              <p className="aide">{sens === "vente" ? "Un stop de vente se place sous le prix actuel : c'est le stop-loss." : "Un stop d'achat se place au-dessus du prix actuel."}</p>
-            )}
-          </div>
-        )}
+          {type === "limite" && (
+            <div className="champ">
+              <label htmlFor="prix-limite">Prix limite</label>
+              <input id="prix-limite" inputMode="decimal" value={pLimite} onChange={(e) => setPLimite(e.target.value)} placeholder={prixCourant !== null ? prix(prixCourant) : ""} />
+            </div>
+          )}
+          {type === "stop" && (
+            <div className="champ">
+              <label htmlFor="prix-stop">Prix du stop</label>
+              <input id="prix-stop" inputMode="decimal" value={pStop} onChange={(e) => setPStop(e.target.value)} placeholder={prixCourant !== null ? prix(prixCourant) : ""} />
+              {mode === "apprenant" && (
+                <p className="aide">{sens === "vente" ? "Un stop de vente se place sous le prix actuel : c'est le stop-loss." : "Un stop d'achat se place au-dessus du prix actuel."}</p>
+              )}
+            </div>
+          )}
+        </details>
 
         <dl className="recap">
           <div><dt>Prix actuel</dt><dd>{prix(prixCourant)}</dd></div>

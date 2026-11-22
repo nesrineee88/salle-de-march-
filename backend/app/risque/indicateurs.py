@@ -19,6 +19,7 @@ JOURS_AN = 365.0
 SEANCES_AN = 252.0          # séances par an : annualise des rendements de séance (jours où tous les actifs cotent)
 MIN_POINTS_COURBE = 10
 MIN_JOURS_VAR = 30
+SEANCES_RISQUE = 250         # fenêtre du niveau de risque
 MIN_JOURS_BETA = 30
 
 
@@ -76,15 +77,35 @@ def var_cvar(rendements, niveau: float = 0.95) -> dict | None:
     return {"var": var, "cvar": cvar, "jours": int(len(r)), "niveau": niveau}
 
 
-def rendements_actifs(series_prix: dict[str, pd.Series]) -> pd.DataFrame:
-    """Rendements journaliers alignés sur les jours où tous les actifs cotent."""
-    cols = {}
-    for symbole, s in series_prix.items():
-        s = s.astype(float)
-        cols[symbole] = (s - s.shift(1)) / s.shift(1).abs()
-    if not cols:
+def rendements_actifs(series_prix: dict[str, pd.Series], seances_max: int | None = None) -> pd.DataFrame:
+    """Rendements entre jours où tous les actifs cotent : le lundi d'une cryptomonnaie mêlée à des actions porte tout
+    le week-end, il n'est pas perdu. `seances_max` garde les dernières séances communes."""
+    if not series_prix:
         return pd.DataFrame()
-    return pd.DataFrame(cols).replace([np.inf, -np.inf], np.nan).dropna()
+    prix = pd.DataFrame({s: serie.astype(float) for s, serie in series_prix.items()}).dropna().sort_index()
+    avant = prix.shift(1)
+    r = ((prix - avant) / avant.abs()).replace([np.inf, -np.inf], np.nan).dropna()
+    return r.tail(seances_max) if seances_max else r
+
+
+def seances_par_an(index) -> float:
+    """365 si la série cote le week-end (cryptomonnaies seules), 252 sinon."""
+    if not isinstance(index, pd.DatetimeIndex) or not len(index):
+        return SEANCES_AN
+    return JOURS_AN if (index.dayofweek >= 5).mean() > 0.1 else SEANCES_AN
+
+
+def drawdown_rendements(rendements) -> float:
+    """Pire baisse qu'auraient connue les poids actuels sur ces rendements, plafonnée à 100 % (prix négatif du WTI)."""
+    r = _finis(rendements)
+    richesse, pic, pire = 1.0, 1.0, 0.0
+    for x in r:
+        richesse *= 1 + x
+        if richesse <= 0:
+            return 1.0
+        pic = max(pic, richesse)
+        pire = max(pire, 1 - richesse / pic)
+    return float(pire)
 
 
 def rendements_portefeuille(poids: dict[str, float], rendements: pd.DataFrame) -> pd.Series:

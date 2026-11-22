@@ -7,6 +7,7 @@ from app.utilisateurs import modeles  # noqa: F401  (enregistre les tables)
 from app.trading import persistance  # noqa: F401
 from app.scenarios import modeles as _scenarios  # noqa: F401
 from app.formation import modeles as _formation  # noqa: F401
+from app.jeu import modeles as _jeu  # noqa: F401
 from app.utilisateurs.db import Base
 
 cible = Base.metadata

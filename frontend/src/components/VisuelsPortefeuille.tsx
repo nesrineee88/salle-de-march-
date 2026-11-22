@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { lienActif } from "@/lib/actif";
 import { dateCourte, montant, montantSigne, pct, pctSigne, prix } from "@/lib/format";
 import { cascade, PERIODES, SEUILS_SECTEUR, sousLEau, squarifier, statutSecteur, type CleePeriode } from "@/lib/portefeuille";
-import { useTheme } from "@/lib/theme";
 import type { Actif, Analyse, PointValeur, Portefeuille, Position } from "@/lib/types";
 import { couleur } from "./Correlations";
 
@@ -100,7 +99,6 @@ export function CascadeResultat({ pf }: { pf: Portefeuille | null }) {
 export function CartePositions({ pf, actifs }: { pf: Portefeuille | null; actifs: Actif[] }) {
   const [zone, largeur] = useLargeur<HTMLDivElement>(600);
   const [bulle, setBulle] = useState<Bulle | null>(null);
-  const theme = useTheme();
   const router = useRouter();
   const H = 300;
   const tuiles = useMemo(() => squarifier((pf?.positions ?? []).map((p) => ({ valeur: p.valeur, item: p })), largeur, H), [pf, largeur]);
@@ -118,7 +116,7 @@ export function CartePositions({ pf, actifs }: { pf: Portefeuille | null; actifs
             <svg width={largeur} height={H} role="img" aria-label="Carte des positions : surface proportionnelle à la valeur, couleur selon le gain ou la perte latent">
               {tuiles.map(({ item: p, x, y, w, h }) => {
                 const r = p.prix_moyen ? p.prix_marche / p.prix_moyen - 1 : 0;
-                const c = couleur(Math.max(-1, Math.min(1, r / 0.2)), theme);
+                const c = couleur(Math.max(-1, Math.min(1, r / 0.2)));
                 const nom = parSymbole.get(p.symbole)?.nom ?? p.symbole;
                 const montrer = () => setBulle({ x: x + w / 2, y: y + Math.min(h / 2, 40), lignes: [
                   { texte: `${pctSigne(r)} · ${usdSigne(p.pnl_latent)}`, fort: true, ton: r > 0 ? "gain" : r < 0 ? "perte" : undefined },

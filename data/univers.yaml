@@ -2,11 +2,11 @@
 # Voir docs/DECISIONS.md (D2, D3, D8). Modifier ce fichier puis relancer le pipeline.
 
 fenetre:
-  debut: 2018-01-01        # début de la simulation
+  debut: 2019-01-02        # début de la simulation (première séance de 2019)
   fin: 2026-10-30          # fin de la simulation : dernier vendredi avant le téléchargement (jeu de données figé).
                            # Pour aller plus loin, changer cette date puis relancer : python -m pipeline tout
                            # (les actualités du jeu FNSPID s'arrêtent en 2023 ; après, seuls les repères et les actualités fictives existent)
-  historique_prealable_jours: 400   # historique avant le début, pour les indicateurs (SMA200, etc.)
+  historique_prealable_jours: 766   # historique avant le début (remonte au 27/11/2016, comme l'instantané figé)
 
 # Heures de séance approximatives en UTC (l'heure d'été est ignorée). Hors séance, le prix reste figé.
 # Les classes absentes de cette liste cotent sur toute la journée (cryptos 24h/24 ; futures quasi 24h).
@@ -64,5 +64,10 @@ actifs:
   - {symbole: KC=F, nom: Café,            classe: matiere, secteur: Agricole,           calendrier: semaine}
 
   # ---------------------------------------------------------------- indices (références, non négociables)
+  # Les cours des actions sont ajustés des dividendes : le S&P 500 comparable est donc la version Total Return.
+  - {symbole: "^SP500TR", nom: S&P 500 Total Return (dividendes inclus), classe: indice, secteur: Indice, calendrier: semaine, tradable: false}
+  - {symbole: "^NDX",  nom: Nasdaq 100, classe: indice, secteur: Indice, calendrier: semaine, tradable: false}
+  - {symbole: "^DJI",  nom: Dow Jones Industrial Average, classe: indice, secteur: Indice, calendrier: semaine, tradable: false}
+  - {symbole: "^990100-USD-STRD", nom: MSCI World, classe: indice, secteur: Indice, calendrier: semaine, tradable: false}
   - {symbole: "^GSPC", nom: S&P 500, classe: indice, secteur: Indice, calendrier: semaine, tradable: false}
   - {symbole: "^VIX",  nom: VIX (volatilité implicite du S&P 500), classe: indice, secteur: Indice, calendrier: semaine, tradable: false}

@@ -1,7 +1,5 @@
-"use client";
-
-import PageMarche from "@/components/PageMarche";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <PageMarche classe="crypto" />;
+  redirect("/marche?classe=crypto");
 }
