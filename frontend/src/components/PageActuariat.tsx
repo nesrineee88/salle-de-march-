@@ -156,19 +156,26 @@ function OngletProvision() {
   );
 }
 
-export default function PageActuariat() {
+/** Le cours classique, rangé sous la protection du portefeuille. */
+export function ContenuActuariat() {
   const [onglet, setOnglet] = useState<"prime" | "provision">("prime");
   return (
-    <main className="page">
-      <header className="page-tete">
-        <h1>Actuariat : prime d&apos;assurance et provisions</h1>
-        <p className="aide">Deux calculs de base du métier : tarifer un contrat d&apos;assurance auto (prime, marge, probabilité de sinistre) et estimer ce qu&apos;il reste à payer sur les sinistres passés (provisionnement).</p>
-      </header>
+    <div className="page">
+      <p className="aide">Deux calculs de base du métier : tarifer un contrat d&apos;assurance auto (prime, marge, probabilité de sinistre) et estimer ce qu&apos;il reste à payer sur les sinistres passés (provisionnement).</p>
       <div className="onglets" role="tablist" aria-label="Outil">
         <button role="tab" aria-selected={onglet === "prime"} className="onglet" onClick={() => setOnglet("prime")}>Tarification</button>
         <button role="tab" aria-selected={onglet === "provision"} className="onglet" onClick={() => setOnglet("provision")}>Provisions (Chain Ladder)</button>
       </div>
       {onglet === "prime" ? <OngletPrime /> : <OngletProvision />}
+    </div>
+  );
+}
+
+export default function PageActuariat() {
+  return (
+    <main className="page">
+      <header className="page-tete"><h1>Actuariat : prime d&apos;assurance et provisions</h1></header>
+      <ContenuActuariat />
     </main>
   );
 }

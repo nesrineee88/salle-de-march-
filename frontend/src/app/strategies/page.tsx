@@ -1,7 +1,7 @@
 "use client";
 
-import PageStrategies from "@/components/PageStrategies";
+import PageAnalyse from "@/components/analyse/PageAnalyse";
 
 export default function Page() {
-  return <PageStrategies />;
+  return <PageAnalyse />;
 }

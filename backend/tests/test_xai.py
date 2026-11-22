@@ -108,6 +108,19 @@ def test_chaque_intention_a_sa_reponse(univers):
     assert {comprendre(q, univers, "AAPL").intention for q in phrases} <= set(reponses.REPONSES) | {"modele"}
 
 
+def test_la_ponctuation_reste_lisible():
+    t = reponses.reponse("Prime : 12 % ? « oui » ; fin !", reponses.preuve("m"))["texte"]
+    assert t == "Prime : 12 % ? « oui » ; fin !"
+    assert not [c for c in t if ord(c) < 32]
+
+
+def test_aucune_reponse_ne_contient_de_caractere_de_controle(client, utilisateur):
+    u = utilisateur()
+    for q in ("risque", "résultat", "quelle banque est fragile", "es-tu ChatGPT", "c'est quoi le RSI", "TST"):
+        r = demander(client, u, q)
+        assert not [c for c in r["texte"] + r["preuve"]["methode"] if ord(c) < 32], q
+
+
 def test_connexion_et_question_obligatoires(client, utilisateur):
     assert client.post("/api/v1/xai/question", json={"question": "risque"}).status_code == 401
     assert client.get("/api/v1/xai/suggestions").status_code == 401

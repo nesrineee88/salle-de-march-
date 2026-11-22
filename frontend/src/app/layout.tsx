@@ -7,6 +7,8 @@ import "./globals.css";
 import "./seance.css";
 import "./jeu.css";
 import "./xai.css";
+import "./protection.css";
+import "./lecture.css";
 import Coquille from "@/components/Coquille";
 
 export const metadata: Metadata = {

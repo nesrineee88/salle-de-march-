@@ -305,12 +305,14 @@ def _regles(question: str, q: str, actifs, symbole_page: str | None, page: str |
         return Lecture("formation", terme=terme)
     if _a(r"(vente|vendu|vendue) .*plus bas|mes ordres|ordres? en attente|ordres? ouverts?|mes regles|regles? (automatiques?|actives?)|(mon|le) stop .*(vendu|declench|execute|plus bas)|stop a vendu|pourquoi .*(vendu|execute) (plus bas|moins cher|a perte)|declenche", q):
         return Lecture("ordres", symbole=symbole)
-    if _a(r"assur|actuari|\bprimes?\b|sinistre|indemn|franchise|proteger|protection|couvrir mon", q):
+    if _a(r"assur|actuari|\bprimes?\b|sinistre|indemn|franchise|proteg|protection|couvrir mon|option de vente|\bputs?\b", q):
         return Lecture("assurance")
     if banque or (_a(r"banques?\b|stress|islamique|conventionnel|cet ?1|m(o)?urabaha|fragile|capital a reconstituer|vasicek", q) and symbole is None):
         return Lecture("stress", banque=banque)
     if not _a(r"risque", q) and _a(r"\bjeu\b|salle obscure|\bfilm\b|ma note|cette note|montage|\bjury\b|seance mystere|bobine|autre choix|si j'avais (tenu|vendu|achete|choisi)", q):
         return Lecture("jeu")
+    if _a(r"que contient l.analyse|fondamenta", q):
+        return Lecture("analyses")
     if _a(r"presse|actualites?|nouvelles|journaux|medias|on dit quoi|que dit[- ]on|\bton\b|sentiment|rumeur", q):
         return Lecture("actualites", symbole=symbole)
     if _a(r"tableau de bord|\bresume\b|resume[rz]?|\bbilan\b|du jour|aujourd'hui|cette seance|ma journee|vue d'ensemble", q) and not symbole:

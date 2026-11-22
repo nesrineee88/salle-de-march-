@@ -167,10 +167,9 @@ Le canal « titres » n'existe que pour le deuxième exemple : il vaut 0 pour le
    (`app/xai/couverture.py::stress_banques`). `app.stress.credit.synthese_xai` reste disponible. L'ancien contrat
    (`stress.modele` : `GROUPES`, `valider_chocs`, `stresser`, `panel_synthetique`) est inchangé.
 2. Aucun fichier commun n'a été modifié. La feuille `app/stress/stress.css` est importée par la page elle-même.
-3. **Pour l'assistant, quand ces modules seront dans `main`** : `app/protection/` (chiffrer la protection du portefeuille) et
-   `app/analyse/lecture.py` (lecture technique et sentiment par actif). Ils n'existaient sur aucune branche distante le 23/11/2026.
-   L'assistant dit aujourd'hui honnêtement que la protection n'est pas chiffrée, et lit le ton des actualités avec
-   `scenarios/sentiment.analyser`, déjà dans `main`. Brancher les deux modules est l'affaire d'une fonction chacun dans `couverture.py`.
+3. **Fusion avec `main` du 23/11/2026** : la réponse « assurance » du poste A, qui chiffre la vraie protection du portefeuille
+   (`protection.devis`), est gardée telle quelle. `app/analyse/lecture.py` n'est pas encore appelé par l'assistant : le ton de la
+   presse passe par `scenarios/sentiment.analyser`. Le brancher demande une fonction dans `couverture.py`.
 
 ## Trois questions probables du jury
 

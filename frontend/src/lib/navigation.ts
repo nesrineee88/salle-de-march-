@@ -8,11 +8,11 @@ export const PRINCIPALES: LienNav[] = [
   { href: "/", libelle: "Dashboard", description: "Rendement, indices et niveau de risque", mobile: true },
   { href: "/marche", libelle: "Marché", description: "Explorer les actifs et passer un ordre", aussi: ["/actions", "/crypto", "/matieres", "/actif"], mobile: true },
   { href: "/portefeuille", libelle: "Portefeuille", description: "Positions, historique et mesures de risque", mobile: true },
-  { href: "/strategies", libelle: "Analyse", description: "Comparer des stratégies sur l'historique" },
+  { href: "/strategies", libelle: "Analyse", description: "Indicateurs, presse et stratégies, testés sur le passé" },
   { href: "/jeu", libelle: "Jeu", description: "La Salle Obscure : rejouer une vraie crise", mobile: true },
   { href: "/stress", libelle: "Stress test", description: "Banques conventionnelles et islamiques face aux chocs" },
   { href: "/formation", libelle: "Formation", description: "Leçons, quiz, défi et ligue" },
-  { href: "/actuariat", libelle: "Assurance", description: "Prime, probabilité de sinistre, provisions" },
+  { href: "/actuariat", libelle: "Assurance", description: "Protéger son portefeuille contre une forte baisse" },
   { href: "/xai", libelle: "XAI", description: "L'assistant qui répond et qui prouve" },
 ];
 
