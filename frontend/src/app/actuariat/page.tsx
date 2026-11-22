@@ -1,7 +1,7 @@
 "use client";
 
-import PageActuariat from "@/components/PageActuariat";
+import PageProtection from "@/components/protection/PageProtection";
 
 export default function Page() {
-  return <PageActuariat />;
+  return <PageProtection />;
 }

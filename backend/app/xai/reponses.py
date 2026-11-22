@@ -8,19 +8,18 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..actuariat import routes as actuariat
-from ..actuariat import tarification
 from ..analyse.indicateurs import rsi
 from ..contexte import Bac, Contexte
 from ..formation.contenu import LECONS
 from ..jeu import service as jeu
 from ..jeu.modeles import PartieJeu
 from ..marche.stockage import DonneeIndisponible
+from ..protection import routes as protection
 from ..risque.suivi import resumer
 from ..risque.synthese import niveau_risque
 from ..routes_portefeuille import _analyser_bac, _courbe
@@ -70,7 +69,7 @@ def preuve(methode: str, donnees=(), barres=(), limite: str = "Le passé ne gara
 
 
 def reponse(texte: str, p: dict, href: str | None = None, libelle: str = "") -> dict:
-    texte = re.sub(r" ([:?!;%»])", NBSP + r"", texte).replace("« ", "«" + NBSP)      # la ponctuation ne passe pas à la ligne
+    texte = re.sub(r" ([:?!;%»])", lambda m: NBSP + m.group(1), texte).replace("« ", "«" + NBSP)   # la ponctuation ne passe pas à la ligne
     return {"texte": texte, "preuve": p, "lien": {"href": href, "libelle": libelle} if href else None}
 
 
@@ -176,10 +175,12 @@ def formation(s: Situation) -> dict:
 
 def analyses_absentes(s: Situation) -> dict:
     return reponse(
-        "Je n’ai pas de données comptables ni de sentiment fiables à expliquer dans le projet actuel, donc je n’invente pas de note. "
-        "Pour un actif, je peux donner sa tendance, son RSI, sa volatilité et votre position.",
-        preuve("Donnée absente", ["Fondamentale : pas de comptes d’entreprises chargés", "Sentiment : hors du périmètre de l’assistant"],
-               limite="Prévu avec le module Analyse."),
+        "La page Analyse lit les indicateurs et le ton de la presse de chaque actif, et teste s’ils ont vraiment servi sur son passé. "
+        "Je n’ai pas de comptes d’entreprises officiels : je ne donne donc aucune note fondamentale.",
+        preuve("Ce que contient l’analyse", ["Lecture technique : 5 à 6 indicateurs, testés à 20 séances",
+                                            "Sentiment : ton quotidien de la presse (GDELT), testé à 5 séances",
+                                            "Fondamentale : absente, la source officielle demande une adresse de contact"],
+               limite="Un signal qui a servi peut cesser de marcher."),
         "/strategies", "Ouvrir l’analyse")
 
 
@@ -358,23 +359,32 @@ def stress_banques(s: Situation) -> dict:
 
 
 def assurance(s: Situation) -> dict:
-    m = tarification.charger(actuariat.dossier_modeles())
-    if m is None:
-        return reponse("Le modèle de tarification n’est pas encore préparé. Ouvrez la page Assurance une fois, puis redemandez-moi.",
-                       preuve("Modèle absent, rien n’est inventé"), "/actuariat", "Ouvrir l’assurance")
-    p = m.prime({})
-    invente = m.source == "synthetique"
-    texte = (f"Pour le profil type de la page Assurance (assurance auto), la prime annuelle est de {nombre(p['prime_commerciale'], 2)} : "
-             f"{nombre(p['frequence_annuelle'], 4)} sinistre par an × {nombre(p['cout_moyen'], 2)} de coût moyen, plus marge et frais. "
-             f"La probabilité d’au moins un sinistre est de {part(p['probabilite_sinistre'])}.")
-    facteurs = [f"{f.get('libelle') or f.get('variable')} : × {nombre(f['facteur'], 3)} sur la fréquence" for f in p["facteurs_frequence"][:4]]
+    """La protection du portefeuille, au réglage par défaut de la page : franchise 10 %, plafond 25 %, 3 mois."""
+    valeurs, cours = protection.preparer(s.ctx, s.bac, s.t, "portefeuille")
+    if not valeurs:
+        return reponse("Vous n’avez aucune position : il n’y a rien à protéger.", preuve("Aucune position"), "/marche", "Choisir un actif")
+    try:
+        d = protection.devis(valeurs, cours, 0.10, 0.25, 91)
+    except ValueError as exc:
+        return reponse(f"Je ne peux pas tarifer : {exc}", preuve("Historique insuffisant, rien n’est inventé"), "/actuariat", "Ouvrir la protection")
+    lecon = "Un krach touche tous les assurés le même jour : c’est pourquoi on se protège en bourse, avec des options de vente."
+    if not d["tarifable"]:
+        return reponse(f"Aucune perte de plus de 10 % en {d['periodes']} périodes passées : je ne fixe pas un prix inventé. "
+                       f"La même protection en bourse coûte {usd(d['prix_bourse'])}. {lecon}",
+                       preuve("Pas de sinistre observé, pas de prix", [f"Capital protégé : {usd(d['capital'])}"]),
+                       "/actuariat", "Ouvrir la protection")
+    texte = (f"Protéger vos {usd(d['capital'])} pendant 3 mois coûte {usd(d['prime'])} : {d['sinistres']} sinistres sur {d['periodes']} "
+             f"périodes passées, {usd(d['cout_moyen'])} en moyenne, plus marge et frais. En bourse, la même protection vaut "
+             f"{usd(d['prix_bourse'])}. {lecon}")
     return reponse(texte,
-                   preuve("Prime pure = fréquence × coût moyen, puis marge et frais", facteurs,
-                          [("Prime pure", p["prime_pure"], nombre(p["prime_pure"], 2)), ("Marge", p["marge_securite"], nombre(p["marge_securite"], 2)),
-                           ("Frais", p["frais"], nombre(p["frais"], 2))],
-                          "Contrats et sinistres INVENTÉS : montants non réalistes, sans lien avec votre portefeuille." if invente
-                          else "Jeu public français d’assurance auto, sans lien avec votre portefeuille."),
-                   "/actuariat", "Ouvrir l’assurance")
+                   preuve("Prime pure = fréquence × coût moyen, puis marge et frais",
+                          [f"Fréquence : {d['sinistres']} / {d['periodes']}",
+                           f"Cours du {jour(date.fromisoformat(d['premiere_date']))} au {jour(date.fromisoformat(d['derniere_date']))}",
+                           f"Volatilité du panier : {part(d['volatilite'])} par an"],
+                          [("Prime pure", d["prime_pure"], usd(d["prime_pure"])), ("Marge", d["marge"], usd(d["marge"])),
+                           ("Frais", d["frais"], usd(d["frais"]))],
+                          "Périodes qui se chevauchent ; le prochain krach n’est pas dans le passé. Devis, rien n’est débité."),
+                   "/actuariat", "Ouvrir la protection")
 
 
 def note_du_jeu(s: Situation) -> dict:

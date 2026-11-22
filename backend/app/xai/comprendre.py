@@ -134,7 +134,7 @@ def comprendre(question: str, actifs, symbole_page: str | None = None) -> Lectur
         return Lecture("identite")
     if _a(r"\bcomment (je )?(puis-je |faire pour )?(acheter|vendre|passer|placer|poser|annuler)", q):
         return Lecture("ordre")
-    if _a(r"assur|actuari|\bprimes?\b|sinistre|indemn|franchise", q):
+    if _a(r"assur|actuari|\bprimes?\b|sinistre|indemn|franchise|proteg|protection|option de vente|\bputs?\b", q):
         return Lecture("assurance")
     if _a(r"banque(s)? |banques?$|stress|islamique|conventionnel|cet ?1|m(o)?urabaha", q) and symbole is None:
         return Lecture("stress")

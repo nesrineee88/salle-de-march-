@@ -39,6 +39,8 @@ from .marche.profil import description_wikipedia
 from .utilisateurs.routes import exiger, routeur as routeur_utilisateurs
 from .utilisateurs.service import ErreurMetier
 from .xai.routes import routeur as routeur_xai
+from .protection.routes import routeur as routeur_protection
+from .analyse.routes_lecture import routeur as routeur_lecture
 
 app = FastAPI(title="Simulateur de salle de marché — API", version="0.2.0")
 app.include_router(routeur_utilisateurs)
@@ -55,6 +57,8 @@ app.include_router(routeur_admin_stats)
 app.include_router(routeur_actuariat)
 app.include_router(routeur_jeu)
 app.include_router(routeur_xai)
+app.include_router(routeur_protection)
+app.include_router(routeur_lecture)
 
 
 @app.exception_handler(ErreurMetier)
