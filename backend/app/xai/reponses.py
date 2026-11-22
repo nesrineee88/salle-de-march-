@@ -24,7 +24,6 @@ from ..marche.stockage import DonneeIndisponible
 from ..risque.suivi import resumer
 from ..risque.synthese import niveau_risque
 from ..routes_portefeuille import _analyser_bac, _courbe
-from ..stress import modele as stress
 from ..trading.carnet import FRAIS_BPS
 from ..utilisateurs.modeles import Utilisateur
 from .comprendre import GLOSSAIRE, Lecture
@@ -34,7 +33,6 @@ MOIS = ("janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sep
 FAMILLES = {"volatilite": "Volatilité", "var": "VaR 95 %", "cvar": "CVaR 95 %", "drawdown": "Pire baisse", "concentration": "Concentration"}
 NIVEAUX = {"faible": "faible", "modere": "modéré", "eleve": "élevé"}
 CLASSES = {"action": "les actions", "crypto": "les cryptomonnaies", "matiere": "les matières premières"}
-CHOC_BANQUES = -0.20
 SEANCES_RECENTES = 20
 
 
@@ -70,7 +68,7 @@ def preuve(methode: str, donnees=(), barres=(), limite: str = "Le passé ne gara
 
 
 def reponse(texte: str, p: dict, href: str | None = None, libelle: str = "") -> dict:
-    texte = re.sub(r" ([:?!;%»])", NBSP + r"", texte).replace("« ", "«" + NBSP)      # la ponctuation ne passe pas à la ligne
+    texte = re.sub(r" ([:?!;%»])", NBSP + r"\1", texte).replace("« ", "«" + NBSP)      # la ponctuation ne passe pas à la ligne
     return {"texte": texte, "preuve": p, "lien": {"href": href, "libelle": libelle} if href else None}
 
 
@@ -82,6 +80,7 @@ class Situation:
     utilisateur: Utilisateur
     session: Session
     lecture: Lecture
+    q: str = ""                     # question normalisée, pour les détails (leçon citée, « autre choix »)
 
     def nom(self, symbole: str) -> str:
         return self.ctx.univers[symbole].nom if symbole in self.ctx.univers else symbole
@@ -106,11 +105,17 @@ def conseil(s: Situation) -> dict:
         "/strategies", "Comparer des stratégies")
 
 
+LIBELLES_PAGES = {"/": "le dashboard", "/marche": "le marché", "/portefeuille": "le portefeuille", "/strategies": "l’analyse",
+                  "/jeu": "le jeu", "/stress": "le stress test", "/actuariat": "l’assurance", "/credit": "le crédit",
+                  "/actualites": "les actualités", "/ia": "les modèles IA", "/xai": "l’assistant", "/formation": "la formation"}
+
+
 def definition(s: Situation) -> dict:
-    return reponse(GLOSSAIRE[s.lecture.terme][1],
-                   preuve("Définition du glossaire", ["Texte pédagogique écrit pour le projet"],
+    _, texte, href = GLOSSAIRE[s.lecture.terme]
+    return reponse(texte,
+                   preuve("Définition du glossaire", ["Rédigé par l’équipe, à vérifier", f"À voir dans {LIBELLES_PAGES.get(href, 'l’application')}"],
                           limite="Définition simplifiée, rédigée de mémoire : à vérifier pour un usage académique."),
-                   "/formation", "Aller en formation")
+                   href, f"Voir dans {LIBELLES_PAGES.get(href, 'l’application')}")
 
 
 def identite(s: Situation) -> dict:
@@ -162,12 +167,16 @@ def sources(s: Situation) -> dict:
         "simulé, comme le carnet d’ordres. Le Direct lit Yahoo Finance, souvent en différé, et reste en lecture seule.",
         preuve("Sources déclarées du projet",
                [f"Rejeu : Yahoo Finance, du {jour(s.ctx.univers.debut)} au {jour(s.ctx.univers.fin)}", "Jeu : fichiers de cours figés",
-                "Banques du stress test : inventées", "Crises injectées par l’administrateur : scénarios fictifs"],
+                "Banques du stress test : 9 vraies banques saoudiennes, rapports Pilier 3 au 31/12/2025", "Crises injectées par l’administrateur : scénarios fictifs"],
                limite="Yahoo Finance n’est pas une source officielle de bourse."),
         "/marche", "Ouvrir le marché")
 
 
 def formation(s: Situation) -> dict:
+    from .couverture import lecon
+    precise = lecon(s)
+    if precise:
+        return precise
     return reponse(
         f"La formation compte {len(LECONS)} leçons avec quiz. Pour débuter : « {LECONS[0]['titre']} », puis la leçon sur le risque.",
         preuve("Catalogue de la formation", [f"{x['titre']} ({x['niveau']})" for x in LECONS], limite="Contenu pédagogique."),
@@ -178,7 +187,7 @@ def analyses_absentes(s: Situation) -> dict:
     return reponse(
         "Je n’ai pas de données comptables ni de sentiment fiables à expliquer dans le projet actuel, donc je n’invente pas de note. "
         "Pour un actif, je peux donner sa tendance, son RSI, sa volatilité et votre position.",
-        preuve("Donnée absente", ["Fondamentale : pas de comptes d’entreprises chargés", "Sentiment : hors du périmètre de l’assistant"],
+        preuve("Donnée absente", ["Fondamentale : pas de comptes d’entreprises chargés", "Ton des actualités : demandez « que dit la presse sur Tesla ? »"],
                limite="Prévu avec le module Analyse."),
         "/strategies", "Ouvrir l’analyse")
 
@@ -262,7 +271,7 @@ def indice(s: Situation) -> dict:
     x = refs[0]
     ecart = x["ecart_points"]
     texte = (f"Depuis le {jour(debut)}, votre rendement total est de {part(r['rendement_total'], 2, True)} et celui du {x['nom']} de "
-             f"{part(x['depuis_debut'], 2, True)}. Vous êtes {'devant' if ecart >= 0 else 'derrière'}, de {nombre(abs(ecart), 2)} points.")
+             f"{part(x['depuis_debut'], 2, True)}. Vous êtes {'devant' if ecart >= 0 else 'derrière'}, de {nombre(abs(ecart), 2)} point{'s' if abs(ecart) >= 2 else ''}.")
     barres = [("Vous", r["rendement_total"], part(r["rendement_total"], 2, True))]
     barres += [(y["nom"], y["depuis_debut"], part(y["depuis_debut"], 2, True)) for y in refs]
     return reponse(texte,
@@ -338,26 +347,15 @@ def choc(s: Situation) -> dict:
                    "/portefeuille", "Voir le portefeuille")
 
 
-def stress_banques(s: Situation) -> dict:
-    chocs = stress.valider_chocs({g: CHOC_BANQUES for g in stress.GROUPES})
-    res = sorted((stress.stresser(b, chocs) for b in stress.panel_synthetique()), key=lambda r: r["ratio_apres"])
-    pire = res[0]
-    sous = sum(r["statut"] != "ok" for r in res)
-    canaux = sorted([c for c in pire["canaux"] if abs(c["perte"]) > 1e-9], key=lambda c: -c["perte"])
-    texte = (f"Si toutes les matières premières perdent {part(-CHOC_BANQUES, 0)}, la plus fragile est {pire['banque']} : "
-             f"son CET1 passe de {part(pire['ratio_avant'])} à {part(pire['ratio_apres'])}. "
-             + (f"Son premier canal de perte est « {canaux[0]['libelle']} ». " if canaux else "")
-             + (f"{sous} banque{'s' if sous > 1 else ''} sur {len(res)} {'passent' if sous > 1 else 'passe'} sous les seuils." if sous
-                else f"Aucune des {len(res)} banques ne passe sous les seuils."))
-    return reponse(texte,
-                   preuve("CET1 après choc = (fonds propres − pertes) ÷ actifs pondérés",
-                          [f"{r['banque']} : {part(r['ratio_avant'])} → {part(r['ratio_apres'])}" for r in res],
-                          [(c["libelle"], c["perte"], f"{nombre(c['perte'], 3)}{NBSP}Md") for c in canaux],
-                          "Banques INVENTÉES et modèle pédagogique : ce ne sont pas de vraies banques."),
-                   "/stress", "Ouvrir le stress test")
-
-
 def assurance(s: Situation) -> dict:
+    if re.search(r"proteg|protection|couvrir mon|mon portefeuille", s.q):
+        v = s.valo()
+        return reponse(
+            f"Votre portefeuille vaut {usd(v['equity'])} au {jour(s.t)}. Le chiffrage d’une protection de portefeuille (option de vente) "
+            "n’est pas encore dans cette version : je ne l’invente pas. Je peux expliquer un put, ou la tarification de la page Assurance.",
+            preuve("Module de protection absent de cette version", [f"Valeur à protéger : {usd(v['equity'])}"],
+                   limite="Le module de protection du portefeuille doit être fusionné par l’autre poste."),
+            "/actuariat", "Ouvrir l’assurance")
     m = tarification.charger(actuariat.dossier_modeles())
     if m is None:
         return reponse("Le modèle de tarification n’est pas encore préparé. Ouvrez la page Assurance une fois, puis redemandez-moi.",
@@ -378,6 +376,10 @@ def assurance(s: Situation) -> dict:
 
 
 def note_du_jeu(s: Situation) -> dict:
+    from .couverture import autre_choix
+    alternative = autre_choix(s)
+    if alternative:
+        return alternative
     p = s.session.scalars(
         select(PartieJeu).where(PartieJeu.utilisateur_id == s.utilisateur.id, PartieJeu.statut == jeu.TERMINEE, PartieJeu.note.is_not(None))
         .order_by(PartieJeu.maj_le.desc())).first()
@@ -427,5 +429,7 @@ REPONSES = {
     "prediction": prediction, "conseil": conseil, "definition": definition, "identite": identite, "accueil": accueil,
     "inconnu": inconnu, "ordre": ordre, "temps": temps, "sources": sources, "formation": formation, "analyses": analyses_absentes,
     "portefeuille": portefeuille, "resultat": resultat, "risque": risque, "indice": indice, "actif": actif, "choc": choc,
-    "stress": stress_banques, "assurance": assurance, "jeu": note_du_jeu,
+    "assurance": assurance, "jeu": note_du_jeu,
 }
+# Les réponses de `couverture.py` (tableau de bord, ordres, comparaison, presse, crédit, banques réelles, page) s'ajoutent à
+# cette table quand le paquet est importé : voir `app/xai/__init__.py`.

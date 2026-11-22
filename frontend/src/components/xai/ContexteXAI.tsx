@@ -17,6 +17,11 @@ export interface Reponse {
   texte: string;
   preuve: Preuve;
   lien: { href: string; libelle: string } | null;
+  symbole?: string | null;
+  symbole2?: string | null;
+  banque?: string | null;
+  suite?: boolean;
+  suivantes?: string[];
 }
 export interface Echange { id: number; question: string; reponse: Reponse | null; erreur: string | null }
 
@@ -29,6 +34,7 @@ interface ValeurXAI {
   basculer: () => void;
   fermer: () => void;
   demander: (question: string) => Promise<void>;
+  expliquerPage: () => Promise<void>;
 }
 
 const Contexte = createContext<ValeurXAI | null>(null);
@@ -43,6 +49,8 @@ export function FournisseurXAI({ children }: { children: React.ReactNode }) {
   const [attente, setAttente] = useState(false);
   const occupe = useRef(false);
   const suivant = useRef(1);
+  // la réponse précédente, renvoyée au serveur pour comprendre « et pour Bitcoin ? » : le serveur ne garde rien
+  const precedente = useRef<{ intention: string; symbole: string | null; symbole2: string | null; banque: string | null } | null>(null);
   const { donnees } = useLecture<Record<string, string[]>>(ouvert || page === "xai" ? "/api/v1/xai/suggestions" : null, 600_000);
   const symbole = page === "actif" && detail ? decodeURIComponent(detail) : null;
 
@@ -56,7 +64,10 @@ export function FournisseurXAI({ children }: { children: React.ReactNode }) {
     let reponse: Reponse | null = null;
     let erreur: string | null = null;
     try {
-      reponse = await api<Reponse>("/api/v1/xai/question", { methode: "POST", corps: { question, symbole } });
+      reponse = await api<Reponse>("/api/v1/xai/question", {
+        methode: "POST", corps: { question, symbole, page, contexte: precedente.current },
+      });
+      precedente.current = { intention: reponse.intention, symbole: reponse.symbole ?? null, symbole2: reponse.symbole2 ?? null, banque: reponse.banque ?? null };
     } catch (e) {
       erreur = e instanceof ErreurApi && e.statut === 404 ? "Le serveur Python ne connaît pas encore l’assistant : redémarrez-le."
         : e instanceof ErreurApi && e.statut >= 500 ? "Le serveur ne répond pas. Réessayez dans un instant."
@@ -65,8 +76,9 @@ export function FournisseurXAI({ children }: { children: React.ReactNode }) {
     setFil((f) => f.map((x) => (x.id === id ? { ...x, reponse, erreur } : x)));
     occupe.current = false;
     setAttente(false);
-  }, [symbole]);
+  }, [symbole, page]);
 
+  const expliquerPage = useCallback(() => demander("Explique cette page"), [demander]);
   const basculer = useCallback(() => setOuvert((v) => !v), []);
   const fermer = useCallback(() => setOuvert(false), []);
   const suggestions = useMemo(() => {
@@ -74,8 +86,8 @@ export function FournisseurXAI({ children }: { children: React.ReactNode }) {
     return donnees?.[cle] ?? donnees?.[""] ?? [];
   }, [donnees, page]);
 
-  const valeur = useMemo<ValeurXAI>(() => ({ fil, attente, ouvert, page, suggestions, basculer, fermer, demander }),
-    [fil, attente, ouvert, page, suggestions, basculer, fermer, demander]);
+  const valeur = useMemo<ValeurXAI>(() => ({ fil, attente, ouvert, page, suggestions, basculer, fermer, demander, expliquerPage }),
+    [fil, attente, ouvert, page, suggestions, basculer, fermer, demander, expliquerPage]);
   return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>;
 }
 

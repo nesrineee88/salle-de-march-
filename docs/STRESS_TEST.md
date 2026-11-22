@@ -163,11 +163,14 @@ Le canal « titres » n'existe que pour le deuxième exemple : il vaut 0 pour le
 
 ## Demandes au poste A
 
-1. **Assistant XAI.** Pour qu'il parle des vraies banques, `app/xai/reponses.py::stress_banques` peut appeler
-   `app.stress.credit.synthese_xai("extreme")`. Elle renvoie `resultats` (une ligne par banque), `pire` (la plus fragile),
-   `canaux` au format `[{libelle, perte}]` en milliards, `sous_7`, `phrase`, `formule` et `limite`. L'ancien contrat
-   (`stress.modele` : `GROUPES`, `valider_chocs`, `stresser`, `panel_synthetique`) est inchangé : `tests/test_xai.py` reste vert.
+1. **Assistant XAI : fait sur la branche `feature/xai-plus`.** L'assistant parle maintenant des vraies banques
+   (`app/xai/couverture.py::stress_banques`). `app.stress.credit.synthese_xai` reste disponible. L'ancien contrat
+   (`stress.modele` : `GROUPES`, `valider_chocs`, `stresser`, `panel_synthetique`) est inchangé.
 2. Aucun fichier commun n'a été modifié. La feuille `app/stress/stress.css` est importée par la page elle-même.
+3. **Pour l'assistant, quand ces modules seront dans `main`** : `app/protection/` (chiffrer la protection du portefeuille) et
+   `app/analyse/lecture.py` (lecture technique et sentiment par actif). Ils n'existaient sur aucune branche distante le 23/11/2026.
+   L'assistant dit aujourd'hui honnêtement que la protection n'est pas chiffrée, et lit le ton des actualités avec
+   `scenarios/sentiment.analyser`, déjà dans `main`. Brancher les deux modules est l'affaire d'une fonction chacun dans `couverture.py`.
 
 ## Trois questions probables du jury
 

@@ -14,7 +14,7 @@ export function PreuveXAI({ preuve }: { preuve: Preuve }) {
         <ul className="xai-barres">
           {preuve.barres.map((b, i) => (
             <li key={`${i}-${b.nom}`}>
-              <span>{b.nom}</span><strong>{b.affiche}</strong>
+              <span>{b.nom}</span><strong>{b.valeur < 0 && !/^[−-]/.test(b.affiche) ? `−${b.affiche}` : b.affiche}</strong>
               <i aria-hidden="true"><em data-sens={b.valeur < 0 ? "negatif" : undefined} style={{ width: `${(Math.abs(b.valeur) / maximum) * 100}%` }} /></i>
             </li>
           ))}
@@ -27,8 +27,9 @@ export function PreuveXAI({ preuve }: { preuve: Preuve }) {
 }
 
 export function Fil({ avecPreuve, naviguer }: { avecPreuve: boolean; naviguer?: () => void }) {
-  const { fil } = useXAI();
+  const { fil, demander, attente } = useXAI();
   const ref = useRef<HTMLDivElement>(null);
+  const derniere = fil.length ? fil[fil.length - 1].id : null;
   useEffect(() => {
     const cadre = ref.current;
     if (!cadre) return;
@@ -58,6 +59,13 @@ export function Fil({ avecPreuve, naviguer }: { avecPreuve: boolean; naviguer?: 
             )}
             {e.reponse?.lien && <Link className="xai-lien" href={e.reponse.lien.href} onClick={naviguer}>{e.reponse.lien.libelle}</Link>}
           </div>
+          {e.id === derniere && e.reponse?.suivantes && e.reponse.suivantes.length > 0 && (
+            <div className="xai-suites" role="group" aria-label="Questions de suite">
+              {e.reponse.suivantes.map((q) => (
+                <button key={q} type="button" disabled={attente} onClick={() => void demander(q)}>{q}</button>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -65,9 +73,10 @@ export function Fil({ avecPreuve, naviguer }: { avecPreuve: boolean; naviguer?: 
 }
 
 export function Suggestions() {
-  const { suggestions, demander, attente } = useXAI();
+  const { suggestions, demander, attente, expliquerPage } = useXAI();
   return (
     <div className="xai-suggestions" role="group" aria-label="Questions proposées">
+      <button type="button" className="xai-page-bouton" disabled={attente} onClick={() => void expliquerPage()}>Explique cette page</button>
       {suggestions.map((q) => <button key={q} type="button" disabled={attente} onClick={() => void demander(q)}>{q}</button>)}
     </div>
   );

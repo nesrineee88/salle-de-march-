@@ -71,3 +71,12 @@ body[data-jeu="projection"] .xai-panneau { display: none; }
   .xai-colonne { padding: 12px 0 0; }
   .xai-colonne .xai-suggestions { flex-wrap: nowrap; overflow-x: auto; }
 }
+
+/* Suites de conversation et « Explique cette page » */
+.xai-suites { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 4px; }
+.xai-suites button { max-width: 100%; padding: 5px 10px; border: 1px solid var(--accent); border-radius: 14px; background: var(--accent-voile); color: var(--accent); font-size: 12px; text-align: left; }
+.xai-suites button:hover:not(:disabled) { background: var(--accent); color: var(--sur-couleur); }
+.xai-suites button:disabled { opacity: 0.45; cursor: not-allowed; }
+.xai-suggestions .xai-page-bouton { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.xai-suggestions .xai-page-bouton:hover:not(:disabled) { background: var(--accent-voile); }
+.xai-barres em[data-sens="negatif"] { background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgb(0 0 0 / 0.25) 4px 6px); }
