@@ -1,0 +1,190 @@
+/* ============================================================================
+   Stress testing bancaire (module 3). Préfixe : .stress-
+   Forme reprise de docs/design/seance-prototype.html, jetons de globals.css.
+   ========================================================================== */
+
+.stress { width: 100%; max-width: 1500px; margin: 0 auto; padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; color: var(--texte); font-size: 14px; }
+.stress h1 { font-family: var(--police-titre); font-size: 25px; line-height: 1.2; }
+.stress h2 { font-size: 15px; line-height: 1.25; }
+.stress-titre { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.stress-titre p { max-width: 70ch; margin-top: 4px; color: var(--texte-2); }
+.stress-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.stress-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.stress-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.stress-badge-reel { background: rgb(79 209 176 / 0.12); color: var(--gain); }
+
+.stress-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 4px; background: var(--surface-3); color: var(--texte-2); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.stress-tag-ok { background: rgb(79 209 176 / 0.12); color: var(--gain); }
+.stress-tag-coussin { background: rgb(242 196 109 / 0.12); color: var(--alerte); }
+.stress-tag-minimum { background: rgb(255 133 128 / 0.12); color: var(--perte); }
+.stress-tag-accent { background: var(--accent-voile); color: var(--accent); }
+
+.stress-vue { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+
+.stress-scenarios { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stress-scenario { display: grid; gap: 3px; align-content: start; padding: 10px 12px; border: 1px solid var(--trait); border-radius: 8px; background: none; color: var(--texte); text-align: left; }
+.stress-scenario:hover { border-color: var(--trait-fort); background: var(--nuit-2); }
+.stress-scenario[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-voile); }
+.stress-scenario b { font-family: var(--police-titre); font-size: 15px; }
+.stress-scenario small { color: var(--texte-2); font-size: 12px; }
+
+.stress-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+.stress-grille:has(> .stress-large:first-child) { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.stress-panneau { min-width: 0; border: 1px solid var(--trait); border-radius: 10px; background: var(--nuit-2); }
+.stress-tete { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; min-height: 48px; padding: 8px 16px; }
+.stress-corps { padding: 0 16px 16px; }
+.stress-aide { color: var(--texte-2); font-size: 12px; line-height: 1.5; }
+.stress-corps > .stress-aide, .stress-panneau > .stress-aide { margin-top: 10px; }
+.stress-panneau > .stress-aide, .stress-panneau > .stress-code { margin-left: 16px; margin-right: 16px; }
+.stress-panneau > .stress-aide:last-child { margin-bottom: 16px; }
+.stress-discret { color: var(--texte-2); }
+.stress-etat { color: var(--texte-2); }
+.stress-erreur { padding: 10px 12px; border: 1px solid var(--perte); border-radius: 6px; color: var(--perte); }
+.stress-sous-titre { margin: 18px 0 8px; font-size: 14px; }
+.stress-cles { display: flex; flex-wrap: wrap; gap: 6px; }
+
+
+/* Résultat : comparaison */
+.stress-duel { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--trait); }
+.stress-duel > div { min-width: 0; padding: 14px 16px; }
+.stress-duel > div + div { border-left: 1px solid var(--trait); }
+.stress-duel small { display: block; color: var(--texte-2); }
+.stress-duel strong { display: inline-block; margin-right: 10px; font-family: var(--police-titre); font-size: 32px; font-weight: 650; }
+.stress-baisse { color: var(--perte); font-size: 12px; white-space: nowrap; }
+.stress-duel em { display: block; color: var(--texte-2); font-size: 12px; font-style: normal; }
+.stress-duel > p { grid-column: 1 / 3; padding: 10px 16px; background: var(--accent-voile); font-size: 13px; }
+.stress-legende { display: flex; flex-wrap: wrap; gap: 14px; padding: 12px 0 0; color: var(--texte-2); font-size: 12px; }
+.stress-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.stress-legende .stress-point { position: static; margin: 0; }
+.stress-trait-seuil { display: inline-block; width: 1px; height: 12px; background: var(--trait-fort); }
+.stress-groupe { padding: 14px 0 6px; color: var(--texte-2); font-size: 12px; font-weight: 600; }
+.stress-ligne, .stress-axe { display: grid; grid-template-columns: 110px minmax(60px, 1fr) 150px; align-items: center; gap: 12px; width: 100%; }
+.stress-ligne { min-height: 42px; padding: 0; border: 0; border-top: 1px solid var(--trait); background: none; color: var(--texte); font-size: 12px; text-align: left; }
+.stress-ligne:hover, .stress-ligne:focus-visible { background: var(--accent-voile); }
+.stress-ligne > b { padding-left: 6px; overflow-wrap: anywhere; }
+.stress-piste { position: relative; align-self: stretch; min-height: 42px; }
+.stress-seuil { position: absolute; top: 0; bottom: 0; border-left: 1px dashed var(--trait-fort); }
+.stress-tige { position: absolute; top: 20px; height: 2px; background: var(--ref); }
+.stress-point { position: absolute; top: 16px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; box-shadow: 0 0 0 2px var(--nuit-2); }
+.stress-point-avant { background: var(--ref); }
+.stress-point-apres { background: var(--accent); }
+.stress-valeurs { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding-right: 6px; white-space: nowrap; }
+.stress-axe { min-height: 20px; border-top: 1px solid var(--trait); color: var(--texte-2); font-size: 11px; }
+.stress-axe-piste { position: relative; height: 20px; }
+.stress-axe-piste > span { position: absolute; top: 4px; transform: translateX(-50%); white-space: nowrap; }
+.stress-axe-piste > span:last-child { transform: translateX(-100%); }
+
+/* Résultat : une banque */
+.stress-fiche { display: grid; gap: 10px; padding: 16px; }
+.stress-champ { display: grid; gap: 4px; color: var(--texte-2); font-size: 12px; }
+.stress-champ select { min-height: 38px; padding: 0 10px; border: 1px solid var(--trait-fort); border-radius: 6px; background: var(--nuit); color: var(--texte); font-size: 14px; }
+.stress-grand { margin-top: 6px; font-family: var(--police-titre); font-size: 40px; font-weight: 640; line-height: 1; white-space: nowrap; }
+.stress-grand small { margin-left: 8px; color: var(--texte-2); font-family: var(--police); font-size: 13px; font-weight: 400; white-space: normal; }
+.stress-fiche > .stress-tag { justify-self: start; }
+.stress-lignes > div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--trait); }
+.stress-lignes dt { color: var(--texte-2); }
+.stress-lignes dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.stress-note { padding: 10px 12px; border-radius: 6px; background: var(--accent-voile); line-height: 1.45; }
+.stress-formule { display: grid; gap: 6px; padding: 12px 14px; border-radius: 6px; background: var(--nuit); list-style: none; font-variant-numeric: tabular-nums; line-height: 1.5; overflow-wrap: anywhere; }
+.stress-formule span, .stress-formule-ligne span { color: var(--texte-2); }
+.stress-formule b, .stress-formule-ligne b { color: var(--accent); }
+.stress-formule-ligne { padding: 10px 14px; border-radius: 6px; background: var(--nuit); font-variant-numeric: tabular-nums; line-height: 1.5; overflow-wrap: anywhere; }
+.stress-barres, .stress-classement { display: grid; gap: 10px; list-style: none; }
+.stress-barres li, .stress-classement li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
+.stress-barres strong, .stress-classement strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stress-barres i, .stress-classement i { grid-column: 1 / 3; height: 8px; overflow: hidden; border-radius: 4px; background: var(--surface-3); }
+.stress-barres em, .stress-classement em { display: block; height: 100%; min-width: 2px; background: var(--accent); }
+.stress-barres em[data-sens="depart"] { background: var(--ref); }
+.stress-barres em[data-sens="perte"] { background: var(--marque-perte); }
+
+/* Réglage de la simulation */
+.stress-reglage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 0; }
+.stress-etape { display: grid; gap: 12px; align-content: start; padding: 16px; min-width: 0; }
+.stress-etape + .stress-etape { border-left: 1px solid var(--trait); }
+.stress-etape-titre { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.stress-etape-titre i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent-voile); color: var(--accent); font-size: 12px; font-style: normal; }
+.stress-bascule { display: inline-grid; grid-template-columns: 1fr 1fr; justify-self: start; padding: 3px; border: 1px solid var(--trait-fort); border-radius: 8px; }
+.stress-bascule button { min-height: 32px; padding: 0 14px; border: 0; border-radius: 6px; background: none; color: var(--texte-2); font-weight: 600; }
+.stress-bascule button[aria-checked="true"] { background: var(--accent); color: var(--sur-couleur); }
+.stress-raccourcis { display: flex; flex-wrap: wrap; gap: 6px; }
+.stress-raccourcis button { min-height: 28px; padding: 0 10px; border: 1px solid var(--trait-fort); border-radius: 6px; background: none; color: var(--texte-2); font-size: 12px; }
+.stress-raccourcis button:hover { border-color: var(--accent); color: var(--accent); }
+.stress-coches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 12px; margin: 0; padding: 0; border: 0; }
+.stress-coches label { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0 8px; min-height: 40px; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.stress-coches label:hover { background: var(--nuit-3); }
+.stress-coches input { width: 16px; height: 16px; accent-color: var(--accent); }
+.stress-coches small { grid-column: 2; color: var(--texte-2); font-size: 11px; }
+.stress-curseur small { color: var(--texte-2); font-size: 11px; font-weight: 400; }
+.stress-lancer { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px 16px; border-top: 1px solid var(--trait); }
+.stress-lancer .btn-principal { width: auto; min-width: 220px; margin: 0; }
+.stress-vide { padding: 28px 16px; border: 1px dashed var(--trait-fort); border-radius: 10px; color: var(--texte-2); text-align: center; }
+.stress-perime { opacity: 0.55; }
+.stress-duel-seul { grid-template-columns: 1fr; }
+.stress-duel-seul > p { grid-column: 1; }
+.stress-curseur input { width: 100%; accent-color: var(--accent); }
+.stress-curseur span { color: var(--texte); font-size: 13px; }
+.stress-compte { margin: 0 0 14px; padding: 10px 12px; border-radius: 6px; background: var(--nuit); }
+.stress-compte b { font-family: var(--police-titre); font-size: 22px; }
+
+.stress-source { color: var(--accent); font-size: 12px; text-underline-offset: 2px; }
+
+/* Type de crise, intensité, paramètres appliqués */
+.stress-intensite { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.stress-intensite > span { color: var(--texte-2); font-size: 13px; }
+.stress-bascule-3 { grid-template-columns: repeat(3, 1fr); }
+.stress-choque { padding: 8px 12px; border-radius: 6px; background: var(--nuit); font-size: 13px; line-height: 1.5; }
+.stress-avance-lgd { border-top: 1px solid var(--trait); padding-top: 8px; }
+.stress-avance-lgd summary { color: var(--texte-2); font-size: 13px; cursor: pointer; }
+.stress-avance-lgd[open] summary { margin-bottom: 8px; }
+.stress-avance-lgd .stress-champ { margin-top: 8px; }
+.stress-case-a-cocher { display: flex; align-items: center; gap: 8px; min-height: 36px; font-size: 13px; cursor: pointer; }
+.stress-case-a-cocher input { width: 16px; height: 16px; accent-color: var(--accent); }
+.stress-curseur input:disabled { opacity: 0.45; }
+.stress-parametres { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stress-parametres th, .stress-parametres td { padding: 8px 16px; border-top: 1px solid var(--trait); text-align: left; vertical-align: top; }
+.stress-parametres thead th { color: var(--texte-2); font-size: 11px; font-weight: 600; }
+.stress-parametres tbody th { font-weight: 600; white-space: nowrap; }
+.stress-parametres td:nth-child(2) { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stress-parametres td:last-child { color: var(--texte-2); font-size: 12px; line-height: 1.45; }
+.stress-origine-publiee { background: var(--accent-voile); color: var(--accent); }
+.stress-origine-hypothese { background: rgb(242 196 109 / 0.12); color: var(--alerte); }
+.stress-origine-mesuree { background: rgb(79 209 176 / 0.12); color: var(--gain); }
+.stress-origine-manuel { background: var(--surface-3); color: var(--texte); }
+
+/* Calcul du capital à reconstituer */
+.stress-plein { grid-column: 1 / -1; }
+.stress-calculs td { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stress-calculs td:last-child { color: var(--texte); font-size: 13px; }
+.stress-calculs td b { color: var(--accent); }
+.stress-total th, .stress-total td { border-top: 1px solid var(--trait-fort); font-weight: 600; }
+
+.stress :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (max-width: 1100px) {
+  .stress-grille, .stress-grille:has(> .stress-large:first-child) { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 820px) {
+  .stress { padding: 14px 12px 24px; }
+  .stress-scenarios { grid-template-columns: minmax(0, 1fr); }
+  .stress-parametres thead { display: none; }
+  .stress-parametres, .stress-parametres tbody, .stress-parametres tr, .stress-parametres th, .stress-parametres td { display: block; width: 100%; }
+  .stress-parametres tr { padding: 8px 12px; border-top: 1px solid var(--trait); }
+  .stress-parametres th, .stress-parametres td { padding: 2px 0; border: 0; white-space: normal; }
+  .stress-parametres tbody th { white-space: normal; }
+  .stress-calculs td { display: flex; justify-content: space-between; gap: 10px; white-space: normal; }
+  .stress-calculs td::before { content: attr(data-l); color: var(--texte-2); }
+  .stress-coches { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stress-reglage { grid-template-columns: minmax(0, 1fr); }
+  .stress-etape + .stress-etape { border-left: 0; border-top: 1px solid var(--trait); }
+  .stress-lancer .btn-principal { width: 100%; }
+  .stress-duel strong { font-size: 26px; }
+  .stress-duel > div { padding: 12px; }
+  .stress-ligne, .stress-axe { grid-template-columns: 66px minmax(40px, 1fr) 96px; gap: 6px; }
+  .stress-valeurs .stress-tag { padding: 3px 5px; }
+  .stress-valeurs .stress-discret, .stress-axe-large { display: none; }
+
+}
+@media (prefers-reduced-motion: reduce) {
+  .stress * { transition: none !important; animation: none !important; }
+}
